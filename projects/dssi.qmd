@@ -1,0 +1,26 @@
+---
+title: "Data Science for Social Impact: Global Tuberculosis Mortality"
+author: "Charlotte Imbert and Emrys King"
+date: "2025-3-29"
+---
+
+[Charlotte](https://cameraperture.github.io/) and I were thrilled to win second place at Harvey Mudd College's inaugural Data Science for Social Impact (DSSI) Datathon!
+
+::: {layout-ncol=2}
+![](2025HMC.Datathon203.jpeg)
+
+![](IMG_7655.jpeg)
+:::
+
+
+
+
+We were given 4 hours to explore the World Bank’s Millennium Development Goals dataset — a rich but messy collection covering 263 countries and regions between 2006 and 2015 — and build a stunning visualization addressing the success of the Millennium Development Goals. Focusing on the 6th goal (combat HIV/AIDS, malaria, and other diseases) and drawing inspiration from a [new John Green book](https://everythingistb.com/), we focused on global incidence of tuberculosis (TB). We chose to present our visualization via an interactive Shiny dashboard to explore how TB death rates correlate with health, education, and economic proxy variables.
+
+![](appsc.jpeg)
+
+We found some expected trends, like a correlation between TB incidence and TB mortality. However, TB treatment success rates had almost no correlation with TB mortality. Rather, *detection* of TB was more influential. Since the disease has variable rates of progression, detection is often the most important step, as it unlocks various kinds of treatment. Early detection is also an indication of well-established, accessible healthcare systems. This observation is corroborated by the negative correlation between TB deaths and the percent of births attended by skilled medical staff.
+
+The final product of is currently hosted on [Charlotte's website](https://cameraperture.shinyapps.io/dssi_app/).
+
+![](2025HMC.Datathon020.jpeg)

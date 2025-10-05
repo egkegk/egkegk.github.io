@@ -1,0 +1,7 @@
+---
+title: "Resume"
+---
+
+Below you may find a PDF of my resume, which details more of my past experience. A longer CV is available upon request.
+
+{{< pdf WebsiteResume.pdf width=80% height=750 border=1 >}}

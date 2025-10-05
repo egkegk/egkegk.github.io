@@ -1,0 +1,626 @@
+---
+title: "Prediction of Life Expectancy and its Relationship to GDP"
+author: "Emrys King and Marissa Douglas"
+date: "2024-12-6"
+abstract: "In this report, we first seek to analyze the relationship between the Gross Domestic Product (GDP) per capita of a country and the life expectancy of that country’s citizens. Using data from the World Health Organization (WHO) on several measures of health, economic status, and geopolitical status, we build explanatory linear regression models and compare the presence of GDP per capita in each of these. Secondarily, we seek to build the optimal model for prediction of life expectancy using the same measures. We employ simple and multiple linear regression, Box-Cox transformation, and shrinkage methods, identify influential points in the model fit, run Box-Cox transformation computations, assess the presence of collinearity, use stepwise elimination to select optimal predictors, and consider the prediction of life expectancy by categorical variables using ANOVA. We conclude by comparing each model across multiple measures of performance and their adherence to the assumptions of homoskedasticity and normality."
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, out.width = "80%", fig.align = "center")
+library(tidyverse)
+library(MASS)
+library(car)
+library(pls)
+library(huxtable)
+library(DT)
+library(pander)
+library(forcats)
+library(viridis)
+library(stringr)
+library(scales)
+library(MetBrewer)
+library(paletteer)
+library(flextable)
+library(latex2exp)
+```
+
+\newpage
+
+# Introduction
+
+GDP per capita is a measurement of the share of GDP per person, which is calculated by summing the consumption, investments, and exports of a country, subtracting the imports, and dividing this value by the population of that country. GDP is a strong economic estimate of the wealth and living standards of a country, but is not enough to describe the income distribution of a country and individual economic reality. As such, we are curious if GDP per capita is a good indicator of the health of a country, as measured by life expectancy, or if GDP per capita falls short in describing country health. To answer this question, we will build a linear regression model with life expectancy as the response variables and all other eligible variables as predictors.
+
+On a secondary level, we are interested in creating an optimal tool for predicting life expectancy, without regard for the explanatory power of each predictor variable. To consider all possibilities in building this tool, we will include different shrinkage methods. Principal component regression, partial least squares regression, and ridge regression will be employed and evaluated via the root mean squared error, as will more standard models. The limitations of all models will be discussed alongside their benefits.
+
+# Data Set
+
+We have obtained an updated version of the World Health Organization’s (WHO) data from 2000-2015 on the life expectancy, health, immunization, and economic and demographic information of 179 different countries. The updated version of the data resolved missing data issues and includes additional columns about income. This data is sourced from Gochiashvili (2023) on Kaggle (https://www.kaggle.com/datasets/lashagoch/life-expectancy-who-updated).
+
+Here we include a description of the variables in the dataset.
+
+```{r data setup}
+lifeexp <- read.csv("~/Documents/School/pomona/(7) 2024 fall semester/statistical linear models/Life-Expectancy-Data-Updated.csv")
+lifeexp2015 <- subset(lifeexp, Year==2015)
+
+## scraping off data into training and testing sets
+train_lifeexp <- lifeexp2015 %>% filter(row_number()%%5 != 0)
+test_lifeexp <- lifeexp2015 %>% filter(row_number()%%5 == 0)
+```
+
+```{r data description}
+d <- data.frame(Variable=c(colnames(lifeexp)), Description=c("List of the 179 countries",
+"179 countries are distributed in 9 regions. E.g. Africa, Asia, Oceania, European Union, Rest of Europe and etc.",
+"Years observed from 2000 to 2015",
+"Infant deaths per 1000 population",
+"Deaths of children under five years old per 1000 population",
+"Deaths of adults per 1000 population",
+"Alcohol consumption, recorded in liters of pure alcohol per capita (15+ years old)",
+"Percent coverage of Hepatitis B (HepB3) immunization among 1-year-olds.",
+"Percent coverage of Measles containing vaccine first dose (MCV1) immunization among 1-year-olds",
+"A measure of nutritional status in adults, defined as a person’s weight in kilograms divided by the square of that person’s height in meters (kg/m2)",
+"Percent coverage of Polio (Pol3) immunization among 1-year-olds.",
+"Percent coverage of Diphtheria tetanus toxoid and pertussis (DTP3) immunization among 1-year-olds.",
+"Incidence of HIV, measured in cases per 1000 population aged 15-49",
+"GDP per capita in current United States Dollars (USD)",
+"Total population in millions",
+"Prevalence of thinness among adolescents aged 10-19 years. BMI < -2 standard deviations below the median.",
+"Prevalence of thinness among children aged 5-9 years. BMI < -2 standard deviations below the median.",
+"Average years that people aged 25+ spent in formal education",
+"Binary variable. 0=Developing country, 1=Developed country.",
+"Binary variable. 0=Developed country, 1=Developing country.",
+"Average life expectancy of both genders in the given year"))
+
+set_flextable_defaults(
+  font.family = "Arial", font.size = 10, 
+  border.color = "gray", big.mark = "", layout=autofit)
+
+ft <- flextable(d) %>%
+     autofit() %>% width(j=2, width=3)
+ft
+```
+
+# Analysis
+
+## Exploratory Analysis
+
+To better understand our data, we began with an exploratory analysis. We first observe that the dataset is a time series. Thus, to avoid possible autocorrelations of variables, we have limited our observations for analysis to the year 2015. This year has 179 observations, each corresponding to a different country. To test the predictive capability within the same year, we have reserved 20% of the data (every 5th observation) for use as a test dataset, while the remaining observations will be used to train the models.
+
+We first plotted the raw relationship between GDP per capita and life expectancy in 2015. Though we removed 20% of the data to use as test cases, the overall shape of the data does not change. In this plot, we observe a positive relationship between GDP per capita and Life Expectancy, and this relationship appears non-linear. Most likely, it is logarithmic. We will test the assumptions on an ordinary least squares regression and inform our analysis from there.
+
+Furthermore, we have colored each datapoint by region to show general geographical trends, which reflect the histories of different regions, including how wars and exploitation of regions in the Global South have impacted economies. Most interesting about this spread is that we see high levels of within-group variation. For example, the datapoints for Africa have near 0 GDP per capita, but their life expectancies range across the vertical axis. Conversely, the datapoints for the European Union have life expectancies near 80, but GDP per capita that range across the horizontal axis. We will analyze this phenomenon further using Analysis of Variance (ANOVA) in a later section.
+
+```{r}
+library(ggplot2)
+ggplot(train_lifeexp, aes(x = GDP_per_capita, y = Life_expectancy, color = Region)) +
+  geom_point(show.legend = TRUE) + 
+  labs(x="GDP per capita", y="Life Expectancy")
+```
+
+Following this initial graph, we would like to see other relationships between variables in the dataset. We look at a years of schooling vs. GDP per capita plot to understand if other similar relationships exist between GDP per capita and status metrics.
+
+```{r}
+ggplot(train_lifeexp, aes(x = GDP_per_capita, y = Schooling, color=Region)) +
+  geom_point(show.legend=TRUE)+ 
+  labs(x="GDP per capita", y="Years of Schooling")
+```
+
+We see a similar nonlinear (likely logarithmic) trend in the plot of years of schooling against GDP per capita. This plot also contains the same within-group variation phenomenon as above. Thus, we expect that there is likely a linear relationship between life expectancy and years of schooling. We observe this relationship below.
+
+```{r}
+ggplot(train_lifeexp, aes(x = Schooling, y = Life_expectancy, color=Region)) +
+  geom_point(show.legend=TRUE) + 
+  labs(x="Years of Schooling", y="Life expectancy")
+```
+
+We do see a linear relationship, with a low signal-to-noise. Thus, while a model predicting life expectancy with only GDP per capita would likely require a transformation of the response, a model predicting life expectancy with only years of schooling would likely not need such a transformation.
+
+To finish our exploratory data analysis, we note that there is a high likelihood of collinearity between predictor variables in this dataset. For example, the predictors related to rates of immunization coverage are likely collinear due to the fact that several immunizations may given to a child in one sitting. We investigate one such possible collinearity in the plots below, which show every possible combination of the four vaccine coverage variables (percent coverage of Hepatitis B vaccination, percent coverage of Measles vaccination, percent coverage of Polio vaccination, percent coverage of Diphtheria vaccination)
+
+```{r}
+par(mfrow=c(2,3))
+plot(train_lifeexp$Hepatitis_B, train_lifeexp$Measles, xlab="Hepatitis B", ylab="Measles")
+plot(train_lifeexp$Hepatitis_B, train_lifeexp$Polio, xlab="Hepatitis B", ylab="Polio")
+plot(train_lifeexp$Hepatitis_B, train_lifeexp$Diphtheria, xlab="Hepatitis B", ylab="Diphtheria")
+plot(train_lifeexp$Measles, train_lifeexp$Polio, xlab="Measles", ylab="Polio")
+plot(train_lifeexp$Measles, train_lifeexp$Diphtheria, xlab="Measles", ylab="Diphtheria")
+plot(train_lifeexp$Diphtheria, train_lifeexp$Polio, xlab="Diphtheria", ylab="Polio")
+```
+
+While some plots have a clearer linear relationship than others, and there is definitely a ceiling effect occurring, there seems to be some degree of linearity present between each pair of immunizations. We will investigate collinearity more rigorously in a later section.
+
+## Preliminary Models
+
+We begin our data analysis with a multiple linear regression model. We use all possible predictors to model life expectancy, and fit the model using the ordinary method of least squares. For conciseness, we will refer to this model as the Full OLS model. Below is displayed a summary of the Full OLS model.
+
+```{r Full OLS}
+lmle <- lm(Life_expectancy ~ ., data=train_lifeexp)
+lmle <- update(lmle, . ~ . - Country - Year - Economy_status_Developed, data=train_lifeexp)
+summary(lmle)
+```
+
+There are a few key takeaways from this summary. First, the standard errors are very small, with the largest being 2.702 (associated with the `(Intercept)` term). This indicates that the fitted linear relationship is a very good approximation of the actual relationship between the datapoints, which is corroborated by the very high value of $R^2=0.9798$. However, this excellent fit is accompanied by only a few significant predictors: `RegionCentral America and Caribbean`, `RegionOceania`, `RegionSouth America`, `Adult_mortality`, `Incidents_HIV`, `GDP_per_capita`, and `Economy_status_Developing` (out of 24 total predictors). This is a definite symptom of collinearity. We will address collinearity more fully in a later section.
+
+In regards to the first goal of this analysis, we see that, while GDP per capita is a significant predictor of life expectancy, it is not the only significant predictor. We thus compare the above model to the simple linear regression model with life expectancy as the response and GDP per capita as the sole predictor. First, let us observe a summary of the simple linear regression model.
+
+```{r SLR}
+lmle_gdp <- lm(Life_expectancy ~ GDP_per_capita, train_lifeexp)
+summary(lmle_gdp)
+```
+
+While the standard errors are still small and the predictor significant, the $R^2$ value has decreased greatly to 0.3962. Since the predictor of the simple linear regression (SLR) model is a subset of predictors of the Full OLS model, we may use the nested model hypothesis test to evaluate the significance of the difference between the two models. The nested model hypothesis test for our current models is as follows: $$\begin{cases} H_0:& \textrm{the SLR and Full OLS models have equivalent levels of accuracy} \\ H_a:& \textrm{the larger Full OLS model is more accurate than the SLR model} \end{cases}$$
+
+```{r Nested Model Testing}
+anova(lmle, lmle_gdp)
+```
+
+Since the $p$-value is less than 0.05, we reject the null hypothesis. Therefore, without any transformation or other considerations like model diagnostics, the Full OLS model is less accurate than the SLR model.
+
+## Model Diagnostics
+
+An important consideration in building linear regression models using ordinary least squares is the adherence of the model to certain assumptions. In particular, one must assure that the residuals (the distance between the fitted values and actual datapoints) have constant variance — also called homoskedasticity — and that the distribution of the residuals is normal. To evaluate these assumptions, we have written a function, `diagnostics()`, which takes a linear model as input and returns two plots and two tests to assess the assumptions. The first plot, fitted vs. residuals, gives a visual representation of the variance of the residuals, which can be used to understand if the variance is constant. We include the line $y=0$, towards which the residuals are minimized, to observe if they are evenly and randomly distributed on either side of the line. This plot corresponds with the output of the non-constant variance test. The second plot, the Normal Q-Q plot, displays the sample vs. theoretical quantiles of the residuals. If these quantiles are equal, then the residuals will be perfectly normal; thus, in this plot, we look for adherence to the line $y=x$. This plot corresponds with the output of the Shapiro-Wilks test of normality.
+
+```{r diagnostics function}
+diagnostics <- function(lm) {
+  # constant variance
+  plot(fitted(lm), resid(lm), xlab="Fitted", ylab="Residuals", main="Residuals vs. Fitted")
+  abline(h=0)
+  
+  # normality
+  qqnorm(resid(lm))
+  qqline(resid(lm))
+  
+  # hypothesis tests
+  print(ncvTest(lm))
+  print(shapiro.test(resid(lm)))
+}
+```
+
+Below we see the output of the `diagnostics()` function for the Full OLS model.
+
+```{r Full OLS diagnostics}
+diagnostics(lmle)
+```
+
+The Full OLS model breaks the homoskedasticity assumption. This can be seen in the leftmost tail of the residuals vs. fitted plot above: on the interval of fitted values \[50, 57\], nearly all of the residuals are positive, so even though the rest of the plot seems randomly distributed across positive and negative, the overall variance cannot be constant. We confirm this result by the $p$-value of the non-constant variance test, $p=0.0303<0.05$, which allows us to reject the null hypothesis of homoskedasticity.
+
+Since the variance is non-constant, the residuals cannot be truly normally distributed. However, the Q-Q plot above shows a good adherence to the line and the Shapiro-Wilks test returns a $p$-value of $p=0.3632>0.05$, meaning we fail to reject the null hypothesis of normality. Thus, though the residuals are heteroskedastic, we may view them as approximately normally distributed.
+
+We can also view the diagnostic output for the SLR model.
+
+```{r SLR diagnostics}
+diagnostics(lmle_gdp)
+```
+
+The most egregious violation of the assumptions above is the violation of normality. With $p=2.36e-07$ in the Shapiro-Wilks test, we can soundly reject the null hypothesis of normality, corroborated visually by the non-equivalence of the quantiles in the Q-Q plot.
+
+If normality is assumed, however, the variance is constant: there is an equivalent proportion of negative and positive residuals. The nonconstant variance test $p$-value, $p=0.23115$, agrees with this statement. However, since the residuals are clearly not randomly distributed, homoskedasticity is a bit of a moot point.
+
+Thus, in terms of assumptions, the Full OLS model once again trumps the SLR model. In the following sections, further models will be built to attempt to resolve the Full OLS model's violation of assumptions.
+
+## Influential Points
+
+In order to apply transformations to the response variable, assess collinearity, and later on run shrinkage methods, one should first analyze the presence and location of influential points in the dataset. Influential points can drastically change the fit of a model. Box-Cox transformations and shrinkage methods are sensitive to influential points, and thus their removal can give a more accurate treatment of the data.
+
+Similarly to the above section, we wrote a function, `unusual_obs()`, which will identify all points of high leverage, outlier points, and influential points. A point with high leverage is defined as one whose leverage is twice the mean leverage in a given dataset. In turn, leverage is given as the diagonals of the hat matrix $H=X(X^TX)^{-1}X^T$. Points with high leverage may potentially have a big impact on the fit of the model, but only if they are outliers as well. Outliers are points that do not fit the model well. To find outliers, we locate all datapoints whose standardized residuals are greater than 2 or less than $-2$. Finally, we find the influential points by calculating the Cook's distance of each point identified as either a point of high leverage or an outlier. If the Cook's distance $D_i$ of any of these points is greater than $\frac{4}{n}$ ($n$ being the sample size), then we heuristically consider those points influential.
+
+```{r influential points function}
+unusual_obs <- function(lm){
+  print("Large Leverage")
+  lev <- hatvalues(lm) > 2*mean(hatvalues(lm))
+  print(hatvalues(lm)[lev])
+  print("Outliers")
+  out <- abs(rstandard(lm))>2
+  print(rstandard(lm)[out])
+  print("Influential Points")
+  print(cooks.distance(lm)[lev]>4/length(cooks.distance(lm)))
+  print(cooks.distance(lm)[out]>4/length(cooks.distance(lm)))
+}
+```
+
+Below we identify the outliers for the Full OLS model.
+
+```{r Influential Points Full OLS model}
+unusual_obs(lmle)
+```
+
+Thus, we have influential points at observations 9, 31, 128 (which have high leverage), and 46, 53, 107 (which are outliers). Let's see which points these are.
+
+```{r investigating outliers}
+outliers <- c(9,31,128,46,53,107)
+
+flextable(train_lifeexp[outliers,c("Country","Region","Life_expectancy","GDP_per_capita")]) %>% autofit()
+```
+
+We see that all of the influential points are in Africa and Asia. To compare these to their regions in particular, and to account for possible socioeconomic factors, we observe the regional mean and standard deviation for GDP per capita in Asia and Africa in 2015.
+
+```{r}
+geo_compare <- data.frame(Region=c("Asia", "Africa"),
+      Mean=c(mean(subset(lifeexp2015, Region=="Asia", select="GDP_per_capita")$GDP_per_capita),
+             mean(subset(lifeexp2015, Region=="Africa", select="GDP_per_capita")$GDP_per_capita)),
+      Standard.Dev=c(sd(subset(lifeexp2015, Region=="Asia", select="GDP_per_capita")$GDP_per_capita),
+                     sd(subset(lifeexp2015, Region=="Africa", select="GDP_per_capita")$GDP_per_capita)))
+
+flextable(geo_compare)
+```
+
+```{r, include=FALSE}
+mean(lifeexp2015$GDP_per_capita)
+sd(lifeexp2015$GDP_per_capita)
+```
+
+Almost all of the outliers are within one standard deviation of the mean GDP per capita of their region, except Singapore. We also note that the mean GDP per capita across all regions in 2015 was \$12617.3, while the standard deviation was \$17719.61; thus, all outliers except Singapore were also within one standard deviation of the overall mean. Therefore, we arrive at another piece of evidence in support of the claim that GDP per capita is not the most accurate or significant predictor of life expectancy.
+
+Having qualitatively and quantitatively assessed the nature of the outlier datapoints, we now remove them from the training dataset, since shrinkage methods are very particular about outliers. We then refit the Full OLS model without outliers.
+
+```{r Full OLS (no influential points)}
+train_lifeexp_clean <- train_lifeexp[-outliers,]
+lmle_clean <- lm(Life_expectancy ~ ., data=train_lifeexp_clean)
+lmle_clean <- update(lmle_clean, . ~ . - Country - Year - Economy_status_Developed, data=train_lifeexp_clean)
+summary(lmle_clean)
+```
+
+The issue of collinearity is not resolved, but removing influential points is not a typical fix for such an issue. More important is whether the removal of influential points pushed the residuals towards normality and/or constant variance. We thus retest the assumptions of ordinary least squares using `diagnostics()`.
+
+```{r Full OLS (no influential points) diagnostics}
+diagnostics(lmle_clean)
+```
+
+We see that the left tail of the Residuals vs. Fitted plot is still largely positive, but that the spread of the rest of the data is more evenly distributed between positive and negative. The non-constant variance test returns a $p$-value of $p=0.1647>0.05$, meaning we fail to reject the null hypothesis of homoskedasticity. The Q-Q plot and Shapiro-Wilk's test maintain the approximate normality of the residuals from the version of the model that included the influential points. Thus, upon removal of the influential points, the Full OLS model was able to fit all necessary assumptions.
+
+## Transformations
+
+The removal of influential points allows us to investigate the necessity for a transformation of the response with greater precision. Thus, since we identified a nonlinear relationship between the response and some of the predictors (most notably GDP per capita) in the exploratory data analysis, we now run the Box-Cox transformation of the response variable. The Box-Cox transformation procedure calculates the log-likelhood of the different values of $\lambda$ as in the following power transformation: $$g_\lambda (y)=\begin{cases}y^\lambda & \lambda \not= 0 \\ \log{y} & \lambda = 0\end{cases}$$
+
+We use the Full OLS model with no influential points as the basis of this computation, plotting the log-likelihood function of $\lambda$ and identifying its 95% confidence interval.
+
+```{r Box-Cox plot}
+library(MASS)
+boxcox(lmle_clean, plotit=TRUE, lambda=seq(-0.6,0.6, by=0.1))
+```
+
+First, we note that $\lambda=1$ is not included in the 95% confidence interval, which tells us that a transformation does need to occur. The 95% confidence interval is not too wide, just over 1 in length, which tells us that there is not a large level of uncertainty in the necessary trasnformation. Finally, the estimated value of $\lambda$ is very close to 0 — which corresponds to a transformation by taking $\log{y}$. Thus, we fit and summarize the Box-Cox transformed linear model below, in which the response of life expectancy is replaced by the natural logarithm of life expectancy.
+
+```{r Box-Cox transformed model}
+lmle_box <- update(lmle_clean, log(Life_expectancy) ~ ., data=train_lifeexp_clean)
+summary(lmle_box)
+```
+
+We see similar strengths and weaknesses between this model and the Full OLS model: high $R^2$ and low standard error indicating that the linear model is an accurate fit for the data, but a high $R^2$ with a low number of significant predictors indicating collinearity. Using the function from the diagnostics section above, we may also see how the Box-Cox transformed model fits the assumptions of ordinary least squares regression.
+
+```{r Box-Cox diagnostics}
+diagnostics(lmle_box)
+```
+
+In the Residuals vs. Fitted plot above, we see a much wider dispersion of residuals in the lefthand side of the data than in the righthand side. This results in a non-constant variance test $p$-value of $p=0.039422<0.05$, meaning we reject the null hypothesis of homoskedasticity. The normality assumption is met by both the Q-Q plot and the Shapiro-Wilks test of normality. Thus, the Box-Cox transformation returns the model to meeting only one of the assumptions (normality) while failing to meet the other (homoskedasticity).
+
+## Collinearity
+
+One of the recurring issues with the various models presented in this report thus far has been a presence of collinearity, which we have identified from the combination of high $R^2$ and low number of significant predictors. In this section, we will use several strategies to more formally assess collinearity in the previous models.
+
+To begin, we wrote a function (`cond_nums()`) which calculates and displays the eigenvalues and condition numbers of the matrix $X^TX$ (where $X$ is the matrix of observations of predictor variables). The condition numbers $\kappa_i=\sqrt{\frac{\lambda_i}{\lambda_p}}$ (where $\lambda_p$ is the smallest eigenvalue) give an indication of the amount of collinearity between predictor variables. A condition number is considered large if $\kappa_i\geq 30$.
+
+```{r}
+cond_nums <- function(lm){
+  x <- model.matrix(lm)[,-1]
+  e <- eigen(t(x) %*% x)
+  cond_nums <- sqrt(e$val[1]/e$val)
+  
+  d <- data.frame(Eigenvalue=e$val,
+                  Condition.Number=cond_nums)
+  ft <- flextable(d)
+  #ft <- bold(ft, bold=TRUE, part="header")
+  ft <- autofit(ft)
+  ft
+}
+```
+
+We first find the condition numbers for the Full OLS model with no influential points below. We have chosen to evaluate this model in particular since it is our best bet so far for a model that fits assumptions and is a good fit for the data.
+
+```{r Condition numbers Full OLS}
+cond_nums(lmle_clean)
+```
+
+Unsurprisingly, all of the condition numbers are greater than 30, indicating a high level of collinearity — in particular, this means that collinearity is being caused by many different approximate linear combinations between predictors.
+
+Another measure of collinearity is the Variance Inflation Factor (VIF). Since collinearity leads to unstable estimations of the coefficients $\beta$, we can observe the effect of collinearity in the expression of the variance of $\hat\beta$ for a given predictor $x_j$, $\textrm{var}(\hat\beta_j)=\sigma^2\left(\frac{1}{1-R^2_j}\right)\frac{1}{\sum_i(x_{ij}-\bar x_j)^2}$. The variance inflation factor is derived from this expression and defined as $(1-R_j^2)^{-1}$ and is large if and only if $\textrm{var}(\hat\beta_j)$ is large.
+
+We calculate the VIFs of the predictors in the Full OLS model with no influential points below.
+
+```{r}
+vif(lmle_clean)
+```
+
+A VIF of exactly 1 indicates perfectly orthogonal variables; thus, we hope for VIFs not much larger than 1. Here, we see several much larger than 1, including `Infant_deaths`, `Under_five_deaths`, `Hepatitis_B`, `Diphtheria`, `Thinness_ten_nineteen_years`, and `Thinness_five_nine_years`. Qualitatively, these make sense: counts of childhood mortality are likely collinear to each other, rates of vaccine coverage are likely collinear to each other, and measures of thinness are by definition collinear to BMI (since their calculation is based off extreme BMI values).
+
+With the above two assessments, we have identified a continued presence of collinearity in our models. Thus, in the following section, we will use the model selection technique of stepwise elimination to attempt to reduce collinearity.
+
+## Model Selection
+
+Model selection techniques are used to optimally select a subset of predictors. The technique we will rely on in this section is stepwise elimination, which evaluates the AIC (Akaike's Information Criterion) of different models using a sequential search method. We include the summary of the model chosen by stepwise elimination below. The starting model is the Full OLS model with no influential points.
+
+```{r}
+lmle_step <- step(lmle_clean, trace=0)
+summary(lmle_step)
+```
+
+On first glance, we see a greater proportion of significant predictors than in the Full OLS model, with an equivalent $R^2$ and smaller residual standard errors. Thus, this model is an improvement from the OLS model.
+
+We can also observe the effect of stepwise elimination on the collinearity of the model. We generate the condition numbers and VIFs of the predictors in the stepwise elimination model.
+
+```{r}
+cond_nums(lmle_step)
+vif(lmle_step)
+```
+
+Collinearity seems not to have improved significantly. The condition numbers are once again all greater than 30, and the VIFs that were exceptionally large continue to be so (`Infant_deaths`, `Under_five_deaths`, `Thinness_ten_nineteen_years`, and `Thinness_five_nine_years` in particular). Thus, the stepwise elimination did not resolve our problem with collinearity.
+
+However, we can combine stepwise elimination with our previous Box-Cox transformation. We display a summary of this model below.
+
+```{r}
+lmle_stepbox <- step(lmle_box, trace=0)
+summary(lmle_stepbox)
+```
+
+Again, we see very small residual standard errors, many significant predictors, and a high $R^2$. Let us check the collinearity.
+
+```{r}
+cond_nums(lmle_stepbox)
+vif(lmle_stepbox)
+```
+
+The condition numbers are still very large, but the VIFs have decreased notably. Thus, the combination of the absence of influential points, the Box-Cox transformation, and predictors chosen via stepwise elimination allows a reduction in collinearity. This in turn stabilizes the estimates of the coefficients, $\hat\beta$, allowing for more accurate interpretability of the model.
+
+Alongside collinearity, we can also check diagnostics of both models above.
+
+```{r}
+diagnostics(lmle_step)
+diagnostics(lmle_stepbox)
+```
+
+We see that both stepwise-elimination-chosen models fit the necessary assumptions, as demonstrated by the plots and $p$-values greater than 0.05 above. Thus, while not fully eliminating collinearity, the model selection via stepwise elimination did result in the model's adherence to assumptions.
+
+## Shrinkage Methods
+
+To accomplish our secondary goal of model accuracy when faced with new data, we consider different shrinkage methods for linear models.
+
+To begin, we use principal component analysis to construct a regression model. This method is useful for our modelling purposes because of the level of collinearity between predictors. Principal component analysis/regression builds a model based on principal components, which are representations of the variation in the data. Since principal components are orthogonal, collinearity is resolved.
+
+We begin by generating the principal components from the training dataset. The standard deviation of each component is listed below.
+
+```{r}
+pc_prep <- subset(train_lifeexp, select=-c(Region,Year,Country))
+train_pca <- prcomp(pc_prep)
+round(train_pca$sdev,3)
+```
+
+We see a steep dropoff in magnitude of the first and second components' standard deviations (the first component's standard deviation is 116.8754 times the second's). The drop between the second and third standard deviations is much less sizeable (the second is less than twice the third). In comparison, the remaining components account for a miniscule amount of all variation present in the training dataset. We can view this as well in the Scree Plot below, which plots the standard deviation of the principal components against their component number.
+
+```{r}
+plot(train_pca$sdev,type="l",ylab="Standard Deviation of Principal Components", xlab="PC number", main="Scree Plot")
+```
+
+From the Scree Plot and the standard deviations themselves, we believe a cutoff of 2 components is sufficient for our model. We thus build a principal component regression (PCR) model, a summary of which is displayed below.
+
+```{r}
+lmle_pcr <- pcr(log(Life_expectancy) ~ Region + Infant_deaths + Under_five_deaths + 
+    Adult_mortality + Alcohol_consumption + Hepatitis_B + Measles + 
+    BMI + Polio + Diphtheria + Incidents_HIV + GDP_per_capita + 
+    Population_mln + Thinness_ten_nineteen_years + Thinness_five_nine_years + 
+    Schooling + Economy_status_Developing, data=train_lifeexp_clean, ncomp=2)
+summary(lmle_pcr)
+```
+
+As expected, we see that 100% of the variance of all predictors is explained with only two components.
+
+We also consider partial least squares (PLS) regression. While PCR produces linear combinations of predictors that minimize collinearity by tending towards orthogonality, it does not consider the response variable in its construction of linear combinations. Partial least squares does. Thus, we build a model with all predictors, and include the Box-Cox transformation, which has been shown to have improved fit in previous sections.
+
+```{r}
+lmle_pls <- plsr(log(Life_expectancy) ~ Region + Infant_deaths + Under_five_deaths + 
+    Adult_mortality + Alcohol_consumption + Hepatitis_B + Measles + 
+    BMI + Polio + Diphtheria + Incidents_HIV + GDP_per_capita + 
+    Population_mln + Thinness_ten_nineteen_years + Thinness_five_nine_years + 
+    Schooling + Economy_status_Developing, data=train_lifeexp_clean, ncomp=18, 
+    validation="CV")
+validationplot(lmle_pls)
+```
+
+The above plot displays the number of components included in the partial least squares regression against their respective cross-validated error (in root mean squared error). We once again see a steep dropoff with the inclusion of only a few components. In particular, the error seems to stabilize and minimize with four components.
+
+Finally, we consider ridge regression. Ridge regression is particularly useful when faced with unstable, collinear coefficients $\hat\beta$. It works by normalizing the regression coefficients, then minimizing the normalized coefficients. Formally, ridge regression seeks to minimize $\beta$ in the expression $$(y-X\beta)^T(y-X\beta)+\lambda\sum_j\beta_j^2$$ for some $\lambda\geq 0$. We build the ridge regression model and return the value of $\lambda$ that minimizes this expression for our specific dataset.
+
+```{r}
+lmle_rg <- lm.ridge(Life_expectancy ~ ., pc_prep, lambda = seq(0, 10, len=200))
+which.min(lmle_rg$GCV)
+```
+
+We see that a value of $\lambda\approx 1.4$ minimizes the normalized $\hat\beta$.
+
+We will compare the efficacy of each model via their root mean squared error in the final section. However, to conclude this section, it is important to mention the limitations of the shrinkage methods described here. In general, they reduce the amount of explanatory power given by a model. Individual coefficients lose their attachment to real-world variables. Thus, while typically powerful prediction techniques, shrinkage methods come at the cost of reduced descriptive capabilities. Additionally, shrinkage methods only work with purely numeric predictors, meaning we have lost the ability to include the categorical variable `Region` in these models. In the following section, a model will be considered built solely on this categorical variable via one-way ANOVA.
+
+## ANOVA
+
+Analysis of Variance (ANOVA) models can be used to quantify relationships between different groups/levels of categorical variables. In particular, they can characterize the proportional size of within-group variation versus between-group variation. They are constructed the same way as linear regression models, with the condition that all predictors must be categorical. In this section, we will begin by visually assessing ANOVA of one or multiple factors, then build the most suitable ANOVA model.
+
+With regards to our dataset, there are two categorical variables of interest: `Region` (one of 9 geopolitical regions) and `Economy_status_developing` (binary, 1 = developing country and 0 = developed country). We are interested in whether some level of variation in the response, life expectancy, can be attributed to these variables alone. In other words, we would like to see whether being a citizen of "developed" or "developing" country can predict your life expectancy, and the equivalent for region. We will look both at one-way ANOVA (treating each variable in isolation) and two-way ANOVA (allowing for interactions of the two variables).
+
+To start, let us visualize the between-group variation with box plots. Below we observe the box-and-whisker plot of life expectancy grouped by region.
+
+```{r}
+train_lifeexp_clean$Regionf <- as.factor(train_lifeexp_clean$Region)
+train_lifeexp_clean <- train_lifeexp_clean %>% mutate(Devf=if_else(Economy_status_Developing==1,
+                                            "Developing", "Developed"))
+
+ggplot(train_lifeexp_clean, aes(fct_reorder(Regionf, Life_expectancy), Life_expectancy, colour=Regionf)) + 
+  geom_boxplot() +
+  labs(x = NULL, y = "Life Expectancy", title="Life Expectancy by Region") +
+  scale_x_discrete(labels = label_wrap(10)) +
+  theme(legend.position = "none")
+```
+
+While some regions seem to have notable differences in life expectancy (e.g. the jump from Africa to Oceania, or from Oceania to European Union), most immediate jumps between groups seem similar. Nevertheless, there could be some meaningful relationship between the variable's possible values. Let us now observe life expectancy grouped by country's economic status.
+
+```{r}
+ggplot(train_lifeexp_clean, aes(fct_reorder(Devf, Life_expectancy), Life_expectancy, colour=Devf)) +
+  geom_boxplot() +
+  labs(x=NULL, y="Life Expectancy", title="Life Expectancy by Economy Status") +
+  theme(legend.position = "none")
+```
+
+We see what could be a meaningful difference between the two groups. However, the large variance of the "developing" group compared to the "developed" group is troubling for modelling purposes.
+
+Now, let us consider visual plots displaying the interaction between region and economic status.
+
+```{r}
+ggplot(train_lifeexp_clean, aes(x=Region, y=Life_expectancy, color=Devf)) +
+  geom_point(show.legend=T) + stat_summary(fun="mean",geom="line",aes(group=Economy_status_Developing)) +
+  labs(x = NULL, y = "Life Expectancy", title = "Life Expectancy by Region",
+       color="Developing vs. Developed Economy") +
+  scale_x_discrete(labels = label_wrap(20)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+ggplot(train_lifeexp_clean, aes(x=Devf, y=Life_expectancy, color=Region)) +
+  geom_point(show.legend=T) + stat_summary(fun="mean",geom="line",aes(group=Region)) +
+  labs(x = "Economy Status", y = "Life Expectancy") +
+  scale_x_discrete(labels = c("Developed", "Developing"))
+```
+
+In both plots, we see an issue that would affect the two-way ANOVA. In the first plot, it is clear that there is not representation of both economy statuses in each region, so a full analysis of the interaction between the variables would be impossible. This pattern carries to the second plot. Thus, we will not build a two-way ANOVA model.
+
+Of the two one-way ANOVA models, the model predicting by region seems more promising. Thus, we provide a summary of that model below.
+
+```{r}
+lmle_aov <- lm(Life_expectancy ~ Region, train_lifeexp_clean)
+summary(lmle_aov)
+```
+
+We see a model with only significant predictor values, but with a much lower $R^2$ and much higher residual standard errors than our other models. As a secondary measure of the model's performance, we test its adherence to assumptions via the `diagnostics()` function.
+
+```{r}
+diagnostics(lmle_aov)
+leveneTest(lmle_aov)
+```
+
+Even accounting for the discrete levels of the model, the variance does not seem constant: in the residuals vs. fitted plot, the residuals for smallest fitted values are much larger than those for the largest fitted values. Similarly, we see large tails tending away from the desired line on the Q-Q plot. The small $p$-values on the non-constant variance test and Shapiro-Wilks test of normality could be attributed to the discrete values of the predictor variable. However, we appeal as well to Levene's test for Homogeneity of Variance, an equivalent to the non-constant variance test built for discrete variables. The small $p$-value from this test confirms that this model does not fit the assumptions.
+
+Thus, to conclude this section, we note that the ANOVA model is the second-worst of the models built in this report on all essential fronts. In short, region is not a sufficient predictor (on its own) of life expectancy.
+
+# Results and Conclusions
+
+To conclude our report, we return to the two questions we sought to answer at the outset. First, is GDP per capita a good predictor of life expectancy? Second, what is the best model in terms of predictive ability when faced with new data?
+
+To answer the first question, we first recall that the Full OLS model had greater accuracy than the SLR model, as determined by the nested model hypothesis test. However, `GDP_per_capita` was chosen as one of the predictors by stepwise elimination both before and after Box-Cox transformation. Thus, GDP per capita may be seen as an important predictor of the average life expectancy in a given country, but not as the \textit{only} important predictor.
+
+To answer the second question, we turn to the following subsection.
+
+## Results: Evaluating Model Performance
+
+Below is included a table that summarizes the performance of each model built in this paper. We include several measures that paint a picture of the model's accuracy from several angles. In particular, we include the root mean squared error, defined as $\sqrt{\sum_{i=1}^n (\hat y_i- y_i)^2/n}$, where $y_i$ is the observed value of the response $y$, $\hat y_i$ is the corresponding fitted value, and $n$ is the sample size. This is commonly used as a measure of performance for models that do not have associated $R^2$, adjusted $R^2$, or residual standard errors, like the shrinkage methods used in this paper.
+
+The columns are as follows: `R.Squared` corresponds to the multiple $R^2$ value as given in the summary of the linear model; `Adj.R.Squared` corresponds to the adjusted $R^2$ of the model; RSE corresponds to the residual standard error of the model; `RMSE.train` corresponds to the root mean squared error between the fitted values and the observed values in the training dataset; `RMSE.test` corresponds to the root mean squared error between the fitted values and the observed values in the testing dataset; and `RMSE.ratio` is a measure of the difference between the two other RMSE values, calculated by dividing `RMSE.test` by `RMSE.train`. The shrinkage methods do not have associated values for some of these performance metrics, and thus no associated value is listed for those models.
+
+```{r}
+rmse <- function(x,y) sqrt(mean((x-y)^2))
+```
+
+```{r}
+slmle <- summary(lmle)
+slmle_aov <- summary(lmle_aov)
+slmle_box <- summary(lmle_box)
+slmle_clean <- summary(lmle_clean)
+slmle_stepbox <- summary(lmle_stepbox)
+slmle_gdp <- summary(lmle_gdp)
+slmle_step <- summary(lmle_step)
+
+numeric_train <- subset(train_lifeexp, select=-c(Country, Region, Year, Life_expectancy))
+numeric_test <- subset(test_lifeexp, select=-c(Country, Region, Year, Life_expectancy))
+
+
+results <- data.frame(
+  Model=c("Full OLS", "SLR (GDP/cap only)", "Full OLS (no influ. pts.)", "Box-Cox Trans.", 
+          "Stepwise Elim.", "Step Elim. & Box-Cox", "PCR", "PLS", "Ridge Regression", "ANOVA"),
+  R.Squared=c(slmle$r.squared,
+              slmle_gdp$r.squared,
+              slmle_clean$r.squared,
+              slmle_box$r.squared,
+              slmle_step$r.squared,
+              slmle_stepbox$r.squared,
+              NA, NA, NA,
+              slmle_aov$r.squared),
+  Adj.R.Squared=c(slmle$adj.r.squared,
+                  slmle_gdp$adj.r.squared,
+                  slmle_clean$adj.r.squared,
+                  slmle_box$adj.r.squared,
+                  slmle_step$adj.r.squared,
+                  slmle_stepbox$adj.r.squared,
+                  NA, NA, NA,
+                  slmle_aov$adj.r.squared),
+  RSE=c(sigma(lmle), sigma(lmle_gdp), sigma(lmle_clean), sigma(lmle_box), sigma(lmle_step),
+        sigma(lmle_stepbox), NA, NA, NA, sigma(lmle_aov)),
+  RMSE.train=c(rmse(fitted(lmle), train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_gdp), train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_clean), train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_box), train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_step), train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_stepbox), train_lifeexp$Life_expectancy),
+               rmse(predict(lmle_pcr, train_lifeexp, ncomp=2), train_lifeexp$Life_expectancy),
+               rmse(predict(lmle_pls, train_lifeexp, ncomp=4), train_lifeexp$Life_expectancy),
+               rmse(cbind(1,as.matrix(numeric_train)) %*% coef(lmle_rg)[which.min(lmle_rg$GCV),],
+                    train_lifeexp$Life_expectancy),
+               rmse(fitted(lmle_aov), train_lifeexp$Life_expectancy)),
+  RMSE.test=c(rmse(predict(lmle, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_gdp, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_clean, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_box, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_step, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_stepbox, test_lifeexp), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_pcr, test_lifeexp, ncomp=2), test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_pls, test_lifeexp, ncomp=4), test_lifeexp$Life_expectancy),
+              rmse(cbind(1,as.matrix(numeric_test)) %*% coef(lmle_rg)[which.min(lmle_rg$GCV),],
+                   test_lifeexp$Life_expectancy),
+              rmse(predict(lmle_aov, test_lifeexp), test_lifeexp$Life_expectancy)))
+
+results$RMSE.ratio <- results$RMSE.test/results$RMSE.train
+
+assumptions <- data.frame(Model=c("Full OLS", "SLR (GDP/cap only)", "Full OLS (no influential points)",
+                                  "Box-Cox Transformation", "Stepwise Elimination", "Box-Cox & Step. Elim.",
+                                  "One-Way ANOVA"),
+                          Homoskedasticity=c(FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, FALSE),
+                          Normality=c(TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE))
+```
+
+```{r}
+round_df <- function(df, digits) {
+  nums <- vapply(df, is.numeric, FUN.VALUE = logical(1))
+
+  df[,nums] <- round(df[,nums], digits = digits)
+
+  return(df)
+}
+
+ft2 <- flextable(round_df(results,3)) %>% autofit() %>% bold(bold=TRUE, part="header") %>%
+  fit_to_width(max_width = 7)
+ft2
+```
+
+There are roughly three groups of models analyzed: standard models and their variations, shrinkage models, and the ANOVA model. As explained in the ANOVA section, the ANOVA model is the second-worst of all models, so in terms of picking the best model, we will only consider candidates from the first two groups. For the shrinkage method models, a best model is easy to select: the ridge regression has the smallest RMSE for both training and testing datasets.
+
+However, a best model is more difficult to select from the standard models and their variations. The models with Box-Cox transformation applied maximize $R^2$ and adjusted $R^2$, while minimizing residual standard error. However, their RMSE are the largest of all models on both training and testing sets. The stepwise elimination model without the Box-Cox transformation also emerges as a possible best model due to its low residual standard error, high $R^2$ and adjusted $R^2$, and low RMSE, especially when faced with new (test) data.
+
+To help select a best of the standard models, we consider whether or not each model meets the assumptions of linear regression. The adherence of each model to the assumptions of homoskedasticity and normality of residuals is summarized in the table below.
+
+```{r}
+ft3 <- flextable(assumptions) %>% autofit() %>% bold(bold=TRUE, part="header") %>%
+  fit_to_width(max_width = 7)
+ft3
+```
+
+Only three models meet both assumptions: the Full OLS model with no influential points and both stepwise elimination models. Since the stepwise elimination model without the Box-Cox transformation meets both assumptions and does very good on its performance measures, we choose that model as the best of the non-shrinkage models.
+
+## Conclusion
+
+To conclude, we summarize our questions and the answers we were able to discern. Our first question was whether or not GDP per capita has a linear relationship with life expectancy. While there certainly was some form of relationship between the two that could be expressed as linear, life expectancy was better predicted by GDP per capita in conjunction with other predictors. Our second question was which model is best for predicting the response, life expectancy. Our two contenders are the ridge regression model and the stepwise elimination model (with \textbf{no} transformation of the response selected via Box-Cox). Which model should be considered best mostly rests on the use of the model. If the goal is solely to predict life expectancy, ridge regression is likely best, due to its minimization properties. However, ridge regression loses explanatory power by the normalization of coefficients inherent to the method. Thus, if prediction of life expectancy in conjunction with coefficients that bear some explanatory power over future observational data, the stepwise elimination model is best. With this, we have answered both questions we sought to resolve at the outset of our project.

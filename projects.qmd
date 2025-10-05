@@ -1,0 +1,9 @@
+---
+title: "Projects"
+listing:
+  contents: projects
+  type: table
+  sort: "date desc"
+---
+
+Below is a portfolio of data analysis, visualization, and mathematical research projects I have worked on.

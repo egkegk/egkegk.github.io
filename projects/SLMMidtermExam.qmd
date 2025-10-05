@@ -1,0 +1,504 @@
+---
+title: "Prediction of Global Temperatures with Climate Proxy Variables"
+author: "Emrys King"
+date: "2024-11-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE)
+
+library(faraway)
+library(tidyverse)
+library(MASS)
+library(car)
+library(pander)
+library(flextable)
+
+data("globwarm", overwrite=TRUE)
+```
+
+# Introduction
+
+In this report, I will be analyzing the dataset `globwarm`, which reports the Average Northern Hemisphere Temperature from 1856-2000 and eight climate proxies from 1000-2000AD. Using the information from the climate proxies above I will attempt to predict the global temperature in years predating 1856, before which temperatures are unreliable due to the lack of standardization of thermometers. To most accurately predict some of these years, I will build seven different linear regression models and evaluate each in a holistic, comprehensive manner.
+
+Thus, the question I am hoping to answer is: which linear model is best? To answer this question, I will first conduct an exploratory analysis of the dataset and establish the periodicity of the data when viewed from a time series perspective. I will then fit a linear model using ordinary least squares to estimate the parameters $\beta$, evaluate the need for a transformation of the response variable using Box-Cox, and communicate the parameter estimates and standard errors of the model and their meaning. Finally, I will test the assumptions of ordinary least squares against each model, find influential points in the dataset that may be affecting the fit, and establish the effect of collinearity on the model. In the conclusion, I will communicate overall findings, consider possible best models and the drawbacks to each, and ultimately predict the northern hemisphere temperature in two of the unknown years, 1850 and 1000.
+
+# Part 1
+
+## 1. Data Description and Exploratory Analysis
+
+To begin, I include here a description of the variables in the dataset `globwarm`.
+
+```{r intro table, echo=FALSE}
+d <- data.frame(Variable=colnames(globwarm), Description=c("Northern hemisphere average temperature (C) provided by the UK Met Office (known as HadCRUT2)", "Tree ring proxy information from the Western USA.", "Tree ring proxy information from Canada.", "Ice core proxy information from west Greenland", "Sea shell proxy information from Chesapeake Bay", "Tree ring proxy information from Sweden", "Tree ring proxy information from the Urals", "Tree ring proxy information from Mongolia", "Tree ring proxy information from Tasmania", "Year 1000-2000AD"))
+
+set_flextable_defaults(
+  font.family = "Arial", font.size = 10, 
+  border.color = "gray", big.mark = "", layout=autofit)
+
+ft <- flextable(d)
+ft <- bold(ft, bold=TRUE, part="header")
+ft <- autofit(ft)
+ft <- width(ft, j=2, width=5)
+ft
+```
+
+Since the goal of this analysis is to predict temperature using the other eight climate variables, it is first necessary to obtain a subset of the data from 1856 onwards, since only these years include data on temperature.
+
+```{r}
+globwarm1856 <- subset(globwarm, year>=1856)
+```
+
+All model building will be based on the dataset `globwarm1856`, since this dataset is (i.e., not `NA`) for all values of `nhtemp`, no matter the `year`.
+
+To begin, let us visually observe the relationship between year and average global temperature. Included is the standard linear model of best fit in blue, and the kernel-smoothed `loess` curve of best fit in red.
+
+```{r}
+ggplot(globwarm1856, aes(year, nhtemp)) + geom_point() + 
+  labs(x="Year", y="Northern Hemisphere Average Temperature (ºC)") +
+  geom_smooth(method='loess', formula= y~x, se=FALSE, colour="red") +
+  geom_smooth(method='glm', formula= y~x, se=FALSE)
+```
+
+The above graph shows that, though the data certainly has a curve to it, a linear model could be used to fit the relationship between `nhtemp` and `year`. In particular, though the residuals do not have constant variance (observe the right tail of the datapoints compared to the other datapoints), a transformation of the response, `nhtemp`, may result in the meeting of this assumption. Furthermore, in the most general terms, this graph shows that the average temperature in the Northern Hemisphere has been increasing as the years go on.
+
+To further explore the dataset, observe the following graphs of tree growth dependent on year and average temperature. "Tree growth" is agglomerated from all tree ring proxy variables — the source of each datapoint (i.e., the variable it is associated with) is depicted via its color.
+
+```{r}
+globwarm1856_trees <- globwarm1856 %>% pivot_longer(cols=c("wusa","jasper","tornetrask",
+                                                           "urals","mongolia","tasman"))
+
+ggplot(globwarm1856_trees, aes(year, value, color=name)) + geom_point() + 
+  labs(x="Year", y="Tree Growth", title="Tree Growth by Year")
+```
+
+The above graph, "Tree Growth by Year," most importantly displays the periodicity of tree growth over time. This pattern indicates that autoregression modelling methods will likely be most appropriate for any model that includes `year` as a predictor and any tree growth proxy as the response.
+
+```{r}
+ggplot(globwarm1856_trees, aes(nhtemp, value, color=name)) + geom_point() +
+  labs(x="Temperature in Northern Hemisphere (ºC)", y="Tree Growth",
+       title="Tree Growth by Temperature") +
+  geom_smooth(method='lm', formula= y~x, se=FALSE, colour="gray")
+```
+
+The above graph shows the truth of the hypothesis guiding this analysis, that information on the rate of tree growth indicates that tree growth increases in warmer temperatures. The slope of the line of best fit is positive, which means that as temperature increases, so does the rate of tree growth.
+
+To conclude the exploratory data analysis, observe the following summary of `year` in relation to every other variable in the dataset.
+
+```{r, fig.dim=c(9,14)}
+par(mfrow=c(3,3))
+plot(globwarm1856$year, globwarm1856$nhtemp, xlab="Year", ylab="Avg. Temp.",
+     main="Avg. Temperature by Year")
+plot(globwarm1856$year, globwarm1856$wusa, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Western USA)")
+plot(globwarm1856$year, globwarm1856$jasper, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Canada)")
+plot(globwarm1856$year, globwarm1856$westgreen, xlab="Year", ylab="Ice Core Proxy",
+     main="Ice by Year (West Greenland)")
+plot(globwarm1856$year, globwarm1856$chesapeake, xlab="Year", ylab="Sea Shell Proxy",
+     main="Sea Shells by Year (Chesapeake Bay)")
+plot(globwarm1856$year, globwarm1856$tornetrask, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Sweden)")
+plot(globwarm1856$year, globwarm1856$urals, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Ural Mtns.)")
+plot(globwarm1856$year, globwarm1856$mongolia, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Mongolia)")
+plot(globwarm1856$year, globwarm1856$tasman, xlab="Year", ylab="Tree Ring Proxy",
+     main="Tree Growth by Year (Tasmania)")
+```
+
+As noted with the "Tree Growth by Year" plot above, the most important trend to be gleaned is the periodicity of each variable in relation to year. This periodicity is something that cannot accurately be modelled other than by autoregression. For the majority of the analysis, `year` will be removed from the predictors to be able to use standard linear regression techniques. However, in the following subsection, the autoregressive model predicting `wusa`, the tree ring proxy information from the western United States, using lagged variables.
+
+## 2. Autoregression
+
+To begin, let us focus on the plot of `wusa` vs. `year`, with the standard linear model $\texttt{wusa}_i=\hat\beta_0+\hat\beta_1\texttt{year}_i$ overlaid.
+
+```{r}
+plot(wusa ~ year, globwarm1856, type="l", xlab="Year", ylab="Tree Ring Proxy (Western USA)")
+abline(lm(wusa ~ year, globwarm1856), col="orange")
+```
+
+The periodicity of the plot above violates the assumptions of linear regression: instead of independently and identically distributed residuals centered around a constant, the residuals will follow the periodic nature of the data itself. To account for the time series nature of the given data, one may instead build an autoregressive model by embedding "lagged" data as predictors of a dataframe. The nature of lagged data may be seen below — note how the value of `wusa_og` in a given observation becomes the value of `lag1` in the subsequent observation, and how the value of `lag1` in a given observation becomes the value of `lag2` in the subsequent observation, and so on.
+
+```{r}
+lagdf <- embed(globwarm1856$wusa,4)
+colnames(lagdf) <- c("wusa_og",paste0("lag",1:3))
+lagdf <- data.frame(lagdf)
+head(lagdf)
+```
+
+Using the `lagdf` dataset, we may predict the value of `wusa` given its previous values, a technique known as autoregression.
+
+```{r}
+lm_ar <- lm(wusa_og ~ ., data.frame(lagdf))
+summary(lm_ar)
+```
+
+From the above summary, one sees that the fit of the autoregressive model predicting `wusa` is nearly perfect: the $R^2$ value is 0.9998, with the maximum possible $R^2$ being 1. The fit of the model can be seen visually in the plot below. The original `wusa` data is included as a black solid line, while the autoregressive fit is included as a red dashed line.
+
+```{r}
+plot(wusa ~ year, data=globwarm1856, type="l")
+lines(globwarm1856$year[4:145], predict(lm_ar, lagdf), lty=2, col="red")
+```
+
+It is thus clear that the periodic nature of the `wusa` data over time is captured by the autoregressive model. The problem with the assumptions that appeared in the standard linear model does not occur here; the periodicity of the data will not be replicated in the residuals.
+
+Now, to employ the autoregression as a predictive model, one must first observe the final entry of `lagdf` dataset, which corresponds to the data for the year 2000.
+
+```{r}
+lagdf[nrow(lagdf),]
+```
+
+Due to the nature of the construction of the lagged data, the values of `wusa_og`, `lag1`, and `lag2` may be plugged in for `lag1`, `lag2`, and `lag3`, respectively to predict the value of `wusa` in 2001. These calculations are accomplished below, and the 95% confidence interval is included in the results.
+
+```{r}
+predict(lm_ar, data.frame(lag1=0.88, lag2=0.84, lag3=0.82),
+        interval="prediction")
+var(globwarm1856$wusa)
+```
+
+Thus, the expected value of `wusa` in 2001 is 0.9316155, with the 95% confidence interval being $(0.9088515, 0.9543796)$. This confidence interval is a bit wide given the spread of the data: in `globwarm1856`, the variance of `wusa` is approximately 0.6, which means that a confidence interval of width just under 0.5 is almost equal to the variance of the data.
+
+Similar to the method above, to predict the value of `wusa` in 2002, one may plug in the values of `wusa_og`, and `lag1` from the last row of `lagdf` for `lag2` and `lag3`, while the expected value for 2001 calculated above may be used as the estimate for `lag1`. The calculation and confidence interval are thus returned.
+
+```{r}
+predict(lm_ar, data.frame(lag1=0.9345123, lag2=0.88, lag3=0.84),
+        interval="prediction")
+```
+
+The expected value of `wusa` in 2002 is 0.9958969, with the 95% confidence interval being $(0.9731721, 1.018622)$. The width of this confidence interval is approximately 0.3, with is smaller than the width of the previous confidence interval and approximately half of the variance of `wusa` in `globwarm1956`.
+
+Autoregression techniques are useful for predicting explicitly time-series data, like tree ring proxy information predicted by year. However, using the climate proxy information in isolation from `year`, one may build a standard linear regression model without using autoregression. Models of this form will be built and evaluated in the following sections.
+
+# Part 2
+
+## 3. Full Model and Stepwise Elimination
+
+To begin, observe the following standard linear regression model, which assigns `nhtemp` as the response and all eight climate proxies as predictors. This model will be referred to as the "full model," the linear regression model with no transformations and all possible predictors (except `year`).
+
+```{r}
+lmgw <- lm(nhtemp ~ ., globwarm1856)
+lmgw <- update(lmgw, . ~ .-year, globwarm1856)
+summary(lmgw)
+```
+
+From the summary above, one observes half of the variables as significant (`jasper`, `tornetrask`, `urals`, and `tasman`), with a poor $R^2$ value of 0.4764. The fit of this model may be improved using stepwise regression, which sequentially compares models via their Aikake's Important Criterion (AIC), defined elimination $AIC=-2L(\hat\theta)+2p$, where $-2L(\hat\theta)=n\log{(RSS/n)}+c$ for sample size $n$, number of parameters $p$, residual sum of squares $RSS$, and some constant $c$. This process ceases upon finding the best selection of predictors without a transformation of the response.
+
+```{r}
+step(lmgw)
+```
+
+The `step()` function chooses the model with predictors `wusa`, `jasper`, `chesapeake`, `tornatrask`, `urals`, and `tasman` as the best model, eliminating `westgreen` and `mongolia`. Thus, observe the model chosen by stepwise elimination below.
+
+```{r}
+lmgw_step <- lm(nhtemp ~ wusa + jasper + chesapeake + tornetrask + urals + tasman, globwarm1856)
+summary(lmgw_step)
+```
+
+Nearly all variables are significant. The multiple $R^2$ decreased from the full model, which makes sense, since $R^2$ "rewards" the addition of more variables — $R^2=1-\frac{RSS}{TSS}$, and $RSS$ can only increase upon the inclusion of more variables. However, the adjusted $R^2$, which is defined as $R_a^2=1-\frac{\hat\sigma_{model}^2}{\hat\sigma_{null}^2}$, only increases if the inclusion of a variable increases the predictive value of the model. Thus, observing the adjusted $R^2$ of both models, one sees that it is higher in the model selected by stepwise elimination.
+
+## 4. Box-Cox Transformation
+
+To proceed building and evaluating models, it will be fruitful to evaluate the possible necessity for a transformation of the response variable, `nhtemp`. The method of evaluating possible transformations of the response is the Box-Cox transformation, which transforms a given response $y$ to one of the form $$g_\lambda(y)=\begin{cases}y^\lambda & \lambda \not = 0 \\ \log{y} & \lambda=0\end{cases}$$ where $\lambda$ is estimated by maximum likelihood. Thus, if the 95% confidence interval of $\lambda$ includes 1, it is most likely that no transformation is necessary; otherwise, the expected value of $\lambda$ should be used to transform the response.
+
+One crucial aspect of Box-Cox transformation is that it requires the response to take only positive values. To check that this assumption is met, one can get a summary of the variable `nhtemp` in `globwarm1856`.
+
+```{r}
+summary(globwarm1856$nhtemp)
+```
+
+The summary reveals that a majority of the `nhtemp` data is negative, which makes sense in terms of what the data is actually communicating: in layman's terms, this means that a majority of days in the northern hemisphere are below freezing (0º C). Since the minimum value of `nhtemp` is small in terms of absolute value, one can amend the negative values by scaling \emph{all} values by 1, which will modify the intercept term in the linear regression model but none of the other coefficents (since the general structure of the data is preserved).
+
+```{r}
+globwarm1856$nhtemp_pos <- globwarm1856$nhtemp + 1
+```
+
+Now there exists a variable `nhtemp_pos` which takes only positive values while maintaining the structure of the original response, `nhtemp`. This variable may thus be used instead of the original to test the need for a transformation via Box-Cox. The log-Likelihood function of $\lambda$ is plotted below, with the 95% confidence interval denoted with dashed lines.
+
+```{r}
+lmgw_pos <- lm(nhtemp_pos ~ ., globwarm1856)
+lmgw_pos <- update(lmgw_pos, . ~ . - year - nhtemp, globwarm1856)
+boxcox(lmgw_pos, plotit=T, lambda=seq(-0.5,1,0.1))
+```
+
+Notably, 1 is not within the 95% confidence interval for $\lambda$, meaning a transformation of the response is necessary. I have chosen $\lambda=0.25$, which seems close to the expected value of $\lambda$ (the middlemost vertical dashed line above).
+
+To evaluate the efficacy of this transformation, one may build linear regression models that include the transformation and compare them to those that do not. Below are the models equivalent to the full model and stepwise elimination model introduced in the above subsection, with the transformation $g(y)=y^{0.25}$ applied to the response. Though not included in the output here, I have also updated the previous models to assign `nhtemp_pos` as the response — these models will be discussed in the Conclusion section. We look first at the summary of the full model with the Box-Cox transformation applied.
+
+```{r}
+lmgw_pos <- lm(nhtemp_pos ~ ., globwarm1856)
+lmgw_pos <- update(lmgw_pos, . ~ . - nhtemp - year, globwarm1856)
+lmgw_steppos <- lm(nhtemp_pos ~ wusa + jasper + chesapeake + 
+                     tornetrask + urals + tasman, globwarm1856)
+
+lmgw_box <- lm(I(nhtemp_pos^(0.25)) ~ ., globwarm1856)
+lmgw_box <- update(lmgw_box, . ~ . - nhtemp - year, globwarm1856)
+
+lmgw_stepbox <- lm(I(nhtemp_pos^(0.25)) ~ wusa + jasper + chesapeake + 
+                     tornetrask + urals + tasman, globwarm1856)
+
+summary(lmgw_box)
+```
+
+Notice above that 4 of the 8 predictors are significant, the multiple $R^2$ has increased from the full model, the adjusted $R^2$ has increased as well, and, most importantly, the residual standard error has decreased significantly. Now, we look at the summary of the stepwise elimination model with the Box-Cox transformation applied.
+
+```{r}
+summary(lmgw_stepbox)
+```
+
+Notice above that 4 of the 6 predictors are significant, the multiple $R^2$ has increased from the full model, the adjusted $R^2$ has increased as well, and, most importantly, the residual standard error has decreased significantly. Overall, both Box-Cox transformed models perform better or equivalently to the pre-transformation models on all fronts.
+
+## 5./6. Parameter Estimates and Standard Errors
+
+To view and compare the paramter (i.e., coefficient) estimates and their standard errors, one may use the function `compareCoefs()` from the `car` package. We do so below. The first two columns represent the pre-transformation models (full and stepwise elimination), while the second two represent the post-transformation models.
+
+```{r}
+compareCoefs(lmgw, lmgw_step, lmgw_box, lmgw_stepbox)
+```
+
+The greatest variation in parameter between the models occurs in `(Intercept)`, which is to be expected since the Box-Cox evaluation required that the response be scaled by a constant. Otherwise, the parameters are either positive or negative across all four models, not a mix of the two. The parameter estimates of the non-transformed models tend to be more similar (in terms of absolute value) to each other than to the other models, and the same is true for the post-transformation models. Additionally, the standard error for each parameter decreases upon transformation of the response.
+
+We can interpret the parameters contextually to provide further information about the nature of the model. To do so, let us look in particular at `Model 1` above, the full model. In general, to interpret these parameters, one must imagine a world in which all variables except the one in question are held constant; for example, if one were to examine the parameter for `mongolia`, they would have to imagine that the trees in the western United States, Canada, Sweden, the Urals, and Tasmania did not grow, that the ice core in west Greenland did not melt or freeze further, and that the seashells found in Chesapeake Bay did not change either. Parameters may only be interpreted in isolation if other variables are held constant.
+
+Thus, if none of the climate proxy information changed between two subsequent years, then the average yearly temperature in the Northern Hemisphere would be expected to decrease by 0.24256 ºC (this corresponds to the `(Intercept)` term).
+
+If only the tree ring proxy information from Western USA changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.07738 ºC.
+
+If only the tree ring proxy information from Canada changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the opposite direction by 0.2288 ºC.
+
+If only the ice core proxy information from west Greenland changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.00958 ºC.
+
+If only the seashell proxy information from Chesapeake Bay changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the opposite direction by 0.03211 ºC.
+
+If only the tree ring proxy information from Sweden changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.0927 ºC.
+
+If only the tree ring proxy information from the Urals changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.1854 ºC.
+
+If only the tree ring proxy information from Mongolia changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.04197 ºC.
+
+If only the tree ring proxy information from Tasmania changed, then for every unit that it increased/decreased, the average yearly temperature would be expected to change in the same direction by 0.11545 ºC.
+
+A similar interpretation could be repeated for the other models above. However, these types of interpretations are not the most realistic for the given problem. In cases of experimental data, one has control over different factors and thus the "holding constant" of variables can have a tangible meaning. In cases of observational data, like `globwarm`, there is no such control over variables: it is impossible to stop a tree from growing for a year in the real world. Nevertheless, these interpretations do contribute to the understanding of the inner workings of the linear model, which can in turn give insights on the real world. For example, taking note of the fact that none of the parameters have an absolute value greater than 0.5, it can be stated that — in general — processes of climate change occur gradually, rather than rapidly.
+
+# Part 3
+
+## 7. Regression Diagnostics
+
+In building the above models, some assumptions have been invoked without testing their validity. In this section, the goal is to test whether or not (1) the residuals of the models have constant variance, and (2) whether the residuals of the models are normally distributed. To do so, I have written the following function. The function first produces a plot of residuals against fitted values to evaluate (1) and a Q-Q plot to test (2). Then, the function tests (1) using the non-constant variance test and (2) using the Shapiro-Wilks' test of normality.
+
+```{r}
+diagnostics <- function(lm) {
+  # constant variance
+  plot(fitted(lm), resid(lm), xlab="Fitted", ylab="Residuals")
+  abline(h=0)
+  
+  # normality
+  qqnorm(resid(lm))
+  qqline(resid(lm))
+  
+  # hypothesis tests
+  print(ncvTest(lm))
+  print(shapiro.test(resid(lm)))
+}
+```
+
+We begin by evaluating the validity of the assumptions on the full model.
+
+```{r}
+diagnostics(lmgw)
+```
+
+There seem to be areas of the Residuals vs. Fitted plot where the residuals bunch closer to zero (e.g. the interval \[-0.4,-0.3\]), and areas with higher variance (e.g. the interval \[-0.1,0\]). Furthermore, the rightmost tail of the Q-Q plot data trails far away from the line $y=x$. This leads me to believe that neither of the assumptions are met, which is confirmed by the small $p$-values present in the nonconstant variance and Shapiro-Wilks' tests. These small $p$-values indicate that the null hypotheses should be rejected, which correspond to homoskedasticity and normality, respectively. In other words, this model's residuals are heterskedastic and non-normal.
+
+Now, we look at the stepwise elimination model.
+
+```{r}
+diagnostics(lmgw_step)
+```
+
+There is less of an issue with "bunching" than in the previous model, with some instances of much greater variance (e.g. \[-0.1,0\]). The rightmost tail again trails far from the line $y=x$, indicating non-normality. The nonconstant variance test returns a $p$-value just above 0.05, meaning the null is not rejected, but the Shapiro-Wilks' test returns $p<0.05$, meaning the residuals are not normally distributed. Thus, the assumptions are not met by the stepwise elimination model either.
+
+Now we observe the full model with the response transformed via Box-Cox.
+
+```{r}
+diagnostics(lmgw_box)
+```
+
+Looking at the vertical axes of both plots, we note that they are on a notably smaller order of magnitude than the above two models' were. Thus, though the shape of the Residuals vs. Fitted plot appears similar, the variance of the residuals is actually closer to constant. Similarly, the rightmost tail of the Q-Q plot does not trail nearly as much as in the two previous examples. Thus, it seems that the assumptions are met. This is confirmed by the two tests, both of which return $p>0.05$, meaning we fail to reject the null in both cases. Therefore, the Box-Cox transformation model with all predictors meets the assumptions.
+
+We turn our attention now to the Box-Cox transformed model with predictors chosen by stepwise elimination.
+
+```{r}
+diagnostics(lmgw_stepbox)
+```
+
+Just as above, the vertical axes are on a smaller order of magnitude than the first two models, so the variation in the Residuals vs. Fitted plot is smaller and the tail of the Q-Q plots travels less far away from the line $y=$. The hypothesis tests again confirm that the assumptions are met.
+
+Thus, overall, the Box-Cox transformed models meet the assumptions of linear regression, while the ones without the transformation do not.
+
+## 8. Unusual Observations
+
+Certain observations can drastically affect the fit of a linear model. Such observations, termed "influential points," may be found via a series of heuristics regarding the "distance" of an observation from its fitted value. I have written the following function to streamline finding influential points. First, it finds all points with large leverage, which are generally defined as those points which have a high impact in the fitting of a linear model. Heuristically, they are defined as those whose leverage are more than twice the mean of the hat values (recalling that the hat values are the diagonals of $H=X(X^TX)^{-1}X^T$). Then, it finds all outlier data, which are points that do not fit the model well, heuristically defined as those points whose standardized residuals are greater than 2 or less than -2. Finally, it checks all of these points to find the influential points, heuristically defined as those points whose Cook's distance ($D_i=\frac{1}{p}r_i^2\frac{h_i}{1-h_i}$, a function of both leverage and standardized residuals) is greater than $\frac{4}{n}$, where $n$ is the sample size.
+
+```{r}
+unusual_obs <- function(lm){
+  print("Large Leverage")
+  lev <- hatvalues(lm) > 2*mean(hatvalues(lm))
+  print(hatvalues(lm)[lev])
+  print("Outliers")
+  out <- abs(rstandard(lm))>2
+  print(rstandard(lm)[out])
+  print("Influential Points")
+  cooks.distance(lm)[lev]>4/length(cooks.distance(lm))
+  cooks.distance(lm)[out]>4/length(cooks.distance(lm))
+}
+```
+
+To observe the effect of influential points on the models, let us look at the model with the worst fit (the full model with not transformation) and the model with the best fit (the transformed model with predictors selected via stepwise transformation).
+
+```{r}
+unusual_obs(lmgw)
+```
+
+Thus, the influential points in the original model are the observations associated with the years 1862, 1878, 1917, 1918, 1995, 1997, 1998, 1999, and 2000. We check the same for the best model.
+
+```{r}
+unusual_obs(lmgw_stepbox)
+```
+
+The influential points for the transformed stepwise elimination model are nearly the same as for the original, full model: 1862, 1878, 1917, 1995, 1997, 1998, 1999, and 2000. We thus see that choice of model does not have a great impact on the set of influential points. Furthermore, it is notable that the majority of influential points are from the last 10 years of the dataset; in other words, this inspection could be used as evidence that the environmental impact of modern technology is affecting global temperatures in profound ways.
+
+For prediction purposes, we create a new dataset excluding the influential points.
+
+```{r}
+out_year <- c(1862, 1875, 1878, 1917, 1995, 1997, 1998, 1999, 2000)
+outliers <- c()
+
+for (year in out_year){
+  outliers <- append(outliers, which(globwarm1856$year==year))
+}
+
+globwarm1856_clean <- globwarm1856[-outliers,]
+```
+
+Additionally, we refit the full model using this smaller dataset.
+
+```{r}
+lmgw_clean <- lm(nhtemp_pos ~ ., globwarm1856_clean)
+lmgw_clean <- update(lmgw_clean, . ~ . -year-nhtemp, globwarm1856_clean)
+summary(lmgw_clean)
+```
+
+Both the $R^2$ and adjusted $R^2$ have increased from the full model, and the residual standard error has decreased. The number of significant predictors is constant between the two. To further demonstrate the improvement this has caused, let us rerun the diagnostic analysis.
+
+```{r}
+diagnostics(lmgw_clean)
+```
+
+The problems present earlier in the plots, as well as the small $p$-values in the nonconstant variance and Shapiro-Wilks' tests, are all resolved. In other words, the removal of influential points allowed the original model to meet the assumptions that it previously failed to meet.
+
+## 9. Collinearity
+
+Though collinearity does not affect the predictive power of a linear regression model, it does affect the ability to discern effects of specific predictor variables on the response. Thus, though the main aim of this analysis is to predict values of `nhtemp`, it can also be useful to evaluate collinearity to understand the interaction between temperature and each of the climate proxies. In short, collinearity can cause instability of the parameter estimates $\hat\beta$.
+
+Collinearity is the phenomenon in which there exists a (usually imperfect) linear relationship between some set of predictor variables. To determine the existence of collinearity, one may calculate the condition numbers $\kappa_i$ of the eigenvalues of the model matrix $X$, which denote the relative size of the eigenvalues, or one may calculate the variance inflation factors (VIF) of the parameters of the model, which are large when the variance of its corresponding parameter, $\textrm{var}\hat\beta_j$, is large.
+
+I have written the following function to calculate and display the condition numbers of a given linear model.
+
+```{r}
+cond_nums <- function(lm){
+  x <- model.matrix(lm)[,-1]
+  e <- eigen(t(x) %*% x)
+  cond_nums <- sqrt(e$val[1]/e$val)
+  
+  d <- data.frame(Eigenvalue=e$val,
+                  Condition.Number=cond_nums)
+  ft <- flextable(d)
+  ft <- bold(ft, bold=TRUE, part="header")
+  ft <- autofit(ft)
+  ft
+}
+```
+
+We check the condition numbers of the full model as well as the stepwise elimination model (the "worst" and "best" models in terms of fit) in order to see if the removal of some predictors aided or worsened collinearity.
+
+```{r}
+cond_nums(lmgw)
+cond_nums(lmgw_step)
+```
+
+Large condition numbers are a sign of collinearity. Condition numbers are considered large when $\kappa_i\geq30$. The largest condition number above, $\kappa=12.093009$ is less than 30, meaning the method of condition numbers does not indicate the presence of collinearity. Now, we check the variance inflation factors of the full model as well as the stepwise elimination model, in the same manner as above.
+
+```{r}
+vif(lmgw)
+vif(lmgw_step)
+```
+
+A variance inflation factor of 1 indicates completely orthogonal variables; the further a VIF is from 1, the greater an impact collinearity has on the instability of the model. In the larger model, there are some relatively large VIFs, namely, `wusa`, `jasper`, `urals`, and `mongolia`. The first three of these predictors' VIFs decrease upon the removal of some predictors, while the final one is itself removed. To see the effect of the removal of some predictors, observe that the standard error for `wusa` in the full model is $\sqrt{5.229919}=2.286902$ times larger than it would be without collinearity, while in the smaller model, this is reduced to $\sqrt{2.704498}=1.644536$.
+
+Overall, none of the condition numbers or VIFs are large enough to indicate a concerning amount of collinearity.
+
+# Conclusion
+
+Over the course of the analysis, seven different linear regression models were built over the course of this report. A table including the $R^2$, adjusted $R^2$, and residual standard error (RSE) for each model is included below. The Scaled Response Models refer to the models with `nhtemp_pos = nhtemp + 1` as the response variable. Note that the values in the table are exactly equal between the Scaled Response models and their equivalent original models.
+
+```{r conclusion table, echo=FALSE}
+slmgw  <- summary(lmgw)
+slmgw_box <- summary(lmgw_box)
+slmgw_clean <- summary(lmgw_clean)
+slmgw_pos <- summary(lmgw_pos)
+slmgw_step <- summary(lmgw_step)
+slmgw_stepbox <- summary(lmgw_stepbox)
+slmgw_steppos <- summary(lmgw_steppos)
+mods_compare <- data.frame(Model=c("Full Model",
+                                   "Stepwise Elimination",
+                                   "Scaled Response Model (all predictors)",
+                                   "Scaled Response Model (stepwise predictors only)",
+                                   "Box-Cox Transformation (all predictors)",
+                                   "Box-Cox Transformation (stepwise predictors only)",
+                                   "Full Model (no influential points)"),
+                           R.Sq=c(slmgw$r.squared,
+                                       slmgw_step$r.squared,
+                                       slmgw_pos$r.squared,
+                                       slmgw_steppos$r.squared,
+                                       slmgw_box$r.squared,
+                                       slmgw_stepbox$r.squared,
+                                       slmgw_clean$r.squared),
+                           Adj.R.Sq=c(slmgw$adj.r.squared,
+                                       slmgw_step$adj.r.squared,
+                                       slmgw_pos$adj.r.squared,
+                                       slmgw_steppos$adj.r.squared,
+                                       slmgw_box$adj.r.squared,
+                                       slmgw_stepbox$adj.r.squared,
+                                       slmgw_clean$adj.r.squared),
+                           RSE=c(sigma(lmgw),
+                                 sigma(lmgw_step),
+                                 sigma(lmgw_pos),
+                                 sigma(lmgw_steppos),
+                                 sigma(lmgw_box),
+                                 sigma(lmgw_stepbox),
+                                 sigma(lmgw_clean)))
+ft1 <- flextable(mods_compare)
+ft1 <- bold(ft1, bold=TRUE, part="header")
+ft1 <- width(ft1, j=1, width=2)
+ft1
+```
+
+Based solely on the information in the above table, one could choose from several "best" models. The full model which excludes influential points has the highest $R^2$ and adjusted $R^2$, and, as shown above, meets all of the assumptions. However, this model there are models with lower residual standard error, and the fact that it relies on all predictors means it is more expensive in terms of data collection. Thus, I would nominate the Box-Cox transformed stepwise elimination model as the "best" model, given that it has fewer predictors, minimal residual standard error, and the second-highest adjusted $R^2$ of all the models in this report. This model also fits the assumptions.
+
+The worst model would necessarily be the original, full model, which has minimal $R^2$ and adjusted $R^2$, maximal residual standard error, and does not meet the necessary assumptions. It is furthermore expensive from a data collection standpoint since it requires all eight predictors.
+
+In general, the major drawback of all of the above models is their lack of simple interpretability. Since the data is observational and not experimental, the metaphor of holding variables constant to simulate a simple linear regression is impossible to achieve in practice. Thus, while the transformed stepwise elimination model has good predictive capabilities, it does not have excellent explanatory power.
+
+With all that in mind, I will predict the average temperature in the northern hemisphere in the years 1850 and 1000.
+
+```{r}
+predvals1 <- subset(globwarm, year==1850, select=-c(year, nhtemp))
+predvals2 <- subset(globwarm, year==1000, select=-c(year, nhtemp))
+
+predict(lmgw_stepbox, predvals1, interval="prediction")
+predict(lmgw_stepbox, predvals2, interval="prediction")
+```
+
+The confidence interval is smaller for the year closer to the known dataset than the year further from it. This tracks with what is generally known about the predictive ability of linear models.

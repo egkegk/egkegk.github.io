@@ -1,0 +1,31 @@
+/*-- scss:defaults --*/
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&family=Radley:ital@0;1&display=swap');
+
+// Colors
+$oxeye: #E6C767;
+$pansy: #F87A53;
+$poppy: #CD5C08;
+
+$shale: #9BB8CD;
+
+$moss: #898121;
+
+$pine: #163020;
+$bogbody: #4C4B16;
+$treebark: #3B3B1A;
+
+$cream: #FEFAE0;
+$salt: #F7F4EA;
+
+
+// Base document colors
+$navbar-bg: $pine; // navbar
+$navbar-fg: $salt; // navbar foreground elements
+$navbar-hl: $oxeye; // highlight color when hovering over navbar links
+$body-bg: $salt; // page background 
+$body-color: $treebark; // page text 
+$link-color: $bogbody; // hyperlinks 
+
+$code-bg: $cream;
+$code-color: $pine;

@@ -1,0 +1,26 @@
+project:
+  type: website
+
+website:
+  title: "Emrys King"
+  favicon: logo.png
+  navbar:
+    logo: logo.png
+    logo-alt: "A hypercube logo."
+    search: true
+    right:
+      - href: index.qmd
+        text: " "
+      - projects.qmd
+      - cv.qmd
+
+format:
+  html:
+    theme:
+      - flatly
+      - theme.scss
+    mainfont: Radley
+    toc: true
+
+editor: source
+

@@ -1,0 +1,11 @@
+---
+title: "Efficacy of STEM Community Learning Practices"
+author: "Emrys King, Atharv Kulkarni, and Tiernan Colby"
+date: "2023-12-4"
+---
+
+We sought to understand the ways in which disparate community-based learning methods commonly employed in Pomona College STEM courses impacted student perceptions of comprehension and belonging. We designed an online survey to measure these perceptions which received nearly 130 responses (with a [total student population](https://www.pomona.edu/about/fact-sheet) of 1,732). The poster below details our survey design, data analysis, and conclusions. We presented our results at the 2023 [IDEAL Symposium](https://www.pomona.edu/administration/institute-inclusive-excellence/events/social-events#:~:text=An%20Afternoon%20of%20Inclusion%2C%20Diversity%2C%20Equity%2C%20and%20Learning).
+
+{{< pdf phys070poster.pdf width=1000 height=750 border=1 >}}
+
+
