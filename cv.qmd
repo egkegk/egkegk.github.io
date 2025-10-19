@@ -1,7 +1,7 @@
 ---
-title: "Resume"
+title: "CV"
 ---
 
-Below you may find a PDF of my resume, which details more of my past experience. A longer CV is available upon request.
+Below you may find a PDF of my CV, which details more of my past experience.
 
-{{< pdf WebsiteResume.pdf width=80% height=750 border=1 >}}
+{{< pdf CV.pdf width=80% height=750 border=1 >}}
