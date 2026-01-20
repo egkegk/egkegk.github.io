@@ -17,7 +17,7 @@ $treebark: #3B3B1A;
 
 $cream: #FEFAE0;
 $salt: #F7F4EA;
-$salt-grey: #d1cec5;
+$salt-grey: #ebe8de;
 
 
 // Base document colors
@@ -27,6 +27,10 @@ $navbar-hl: $oxeye; // highlight color when hovering over navbar links
 $body-bg: $salt; // page background 
 $body-color: $treebark; // page text 
 $link-color: $bogbody; // hyperlinks 
+$table-color: $bogbody;
+$figure-caption-color: $bogbody;
+
 
 $code-bg: $salt-grey;
 $code-color: $pine;
+$code-block-bg: $salt-grey;

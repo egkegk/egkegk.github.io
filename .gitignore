@@ -7,3 +7,8 @@
 
 /.quarto/
 probability151/
+
+**/*.quarto_ipynb
+
+csmlexam.qmd
+ref.bib

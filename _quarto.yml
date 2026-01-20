@@ -14,6 +14,9 @@ website:
         text: " "
       - projects.qmd
       - cv.qmd
+  search:
+    location: navbar
+    type: textbox
 
 format:
   html:

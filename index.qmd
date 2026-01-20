@@ -3,7 +3,7 @@ title: "Emrys King"
 subtitle: "(he/him)"
 about:
   template: broadside
-  image: IMG_2527.jpeg
+  image: pfp.jpeg
   links:
     - icon: linkedin
       text: LinkedIn

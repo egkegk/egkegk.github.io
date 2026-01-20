@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Emrys King">
+<meta name="dcterms.date" content="2025-12-12">
+
+<title>Linear and Nonlinear Models with a Quantile Loss Function – Emrys King</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./logo.png" rel="icon" type="image/png">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-65d202d7ace8b1f7d0f702f72208ab20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
+    <img src="./logo.png" alt="A hypercube logo." class="navbar-logo light-content">
+    <img src="./logo.png" alt="A hypercube logo." class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Emrys King</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="./index.html"> 
+<span class="menu-text"> </span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./projects.html"> 
+<span class="menu-text">Projects</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./cv.html"> 
+<span class="menu-text">CV</span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#sec-int" id="toc-sec-int" class="nav-link active" data-scroll-target="#sec-int">Introduction</a></li>
+  <li><a href="#sec-lin" id="toc-sec-lin" class="nav-link" data-scroll-target="#sec-lin">Linear Models for Varying Quantiles</a></li>
+  <li><a href="#sec-nonlin" id="toc-sec-nonlin" class="nav-link" data-scroll-target="#sec-nonlin">Nonlinear Models for Varying Quantiles</a></li>
+  <li><a href="#sec-ridge" id="toc-sec-ridge" class="nav-link" data-scroll-target="#sec-ridge">Ridge Regression for Varying Quantiles</a></li>
+  <li><a href="#comparison" id="toc-comparison" class="nav-link" data-scroll-target="#comparison">Comparison</a></li>
+  <li><a href="#theoretical-guarantees-of-quantiles" id="toc-theoretical-guarantees-of-quantiles" class="nav-link" data-scroll-target="#theoretical-guarantees-of-quantiles">Theoretical Guarantees of Quantiles</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  <li><a href="#sec-code" id="toc-sec-code" class="nav-link" data-scroll-target="#sec-code">Code Appendix</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Linear and Nonlinear Models with a Quantile Loss Function</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Emrys King </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">December 12, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+<div>
+  <div class="abstract">
+    <div class="block-title">Abstract</div>
+    In this report, I implement linear and nonlinear models trained on the Boston dataset from the MASS package, optimized over a quantile loss function. The efficacy of each mode, as well as possible methods for optimizing the models that are commensurate with theoretical quantiles, are discussed.
+  </div>
+</div>
+
+
+</header>
+
+
+<section id="sec-int" class="level2">
+<h2 class="anchored" data-anchor-id="sec-int">Introduction</h2>
+<p>Let <span class="math inline">\(\ell\)</span> be the asymmetric quantile loss function defined by <span class="math display">\[
+\ell_{\tau}(y,q) = \begin{cases}
+  \tau(y-q) &amp; y &gt; q \\
+  (\tau-1)(y-q) &amp; y \leq q
+\end{cases}
+\]</span> where <span class="math inline">\(\tau\in (0,1)\)</span> is the quantile level. Let <span class="math inline">\(R_\tau (q;x) = \mathbb{E}[\ell_\tau(Y,q)\mid X=x]\)</span> denote the conditional risk and note that <span class="math inline">\(q^*_\tau :=\arg\min_qR_\tau(q;x)\)</span> is the conditional <span class="math inline">\(\tau\)</span>-quantile of <span class="math inline">\(Y\mid X=x\)</span>.</p>
+<p>Throughout this analysis, I will be using the <code>Boston</code> dataset from the <code>MASS</code> package, modelling response <code>medv</code> (median house price in $1000s) by predictors <code>lstat</code> (percent lower status of the population) and <code>rm</code> (average number of rooms per dwelling). The data (<span class="math inline">\(n=506\)</span>) has been randomly split into a training set (<span class="math inline">\(n_{\textrm{train}}=354\)</span>) and a testing set (<span class="math inline">\(n_{\textrm{test}}=152\)</span>) prior to any analysis.</p>
+</section>
+<section id="sec-lin" class="level2">
+<h2 class="anchored" data-anchor-id="sec-lin">Linear Models for Varying Quantiles</h2>
+<p>I implemented the loss function and its empirical mean as <code>loss()</code> and <code>empirical_loss()</code>, which can be found in <a href="#sec-code" class="quarto-xref">Section&nbsp;8</a>. Let us now consider the baseline linear model given by <span class="math display">\[
+f^{(0)}_\tau(x) = \beta_{0,\tau}^{(0)} + \beta_{1,\tau}^{(0)}\texttt{lstat} + \beta_{2,\tau}^{(0)}\texttt{rm}
+\]</span></p>
+<p>I used the <code>optim</code> function to minimise <span class="math inline">\(\ell_\tau(y,f^{(0)}_\tau(x))\)</span> over the training dataset for each <span class="math inline">\(\tau \in \{0.1,0.5,0.9\}\)</span>. Specifically, I used the Nelder-Mead method, considered to be robust (as it does not require gradients) while at times slow. In this scenario, where the training set is small, I am not particularly worried about relative slowness, since all processes will be quick; I thus prioritised the robustness of Nelder-Mead. Since Nelder-Mead can be sensitive to its starting values, I began the optimisation algorithm at <span class="math inline">\((\beta_{0,\tau},\beta_{1,\tau},\beta_{2,\tau})=(\bar y, 0, 0)\)</span>, where <span class="math inline">\(y=\texttt{medv}\)</span> and thus <span class="math inline">\(\bar y\)</span> is the sample mean of <code>medv</code>. These starting parameters represent the typical null hypothesis of linear modelling, in which the predictors (here, <code>lstat</code> and <code>rm</code>) have no influence on the response (here, <code>medv</code>), and so the best linear model is simply a horizontal line at the sample mean of the response. After running the <code>optim</code> for each value of <span class="math inline">\(\tau\in\{0.1,0.5,0.9\}\)</span>, we find the coefficients presented in <a href="#tbl-baselinecoefs" class="quarto-xref">Table&nbsp;1</a>.</p>
+<div class="cell">
+<div id="tbl-baselinecoefs" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-baselinecoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: The estimated coefficients <span class="math inline">\(\hat\beta_{i,\tau}^{(0)}\)</span> that minimise the empirical loss over the training set.
+</figcaption>
+<div aria-describedby="tbl-baselinecoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 30%">
+<col style="width: 30%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{0,\tau}^{(0)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{1,\tau}^{(0)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{2,\tau}^{(0)}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">16.147</td>
+<td style="text-align: right;">-0.805</td>
+<td style="text-align: right;">1.787</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">-8.700</td>
+<td style="text-align: right;">-0.592</td>
+<td style="text-align: right;">6.038</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">-20.000</td>
+<td style="text-align: right;">-0.299</td>
+<td style="text-align: right;">8.419</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>To evaluate the linear models’ performance, we would like a characterisation of the empirical loss against the test data. This can be done by calculating the empirical risk, <span class="math inline">\(\hat R_{\tau}(f_\tau^{(0)};x_\mathrm{test})\)</span>, which is simply the mean loss of the models under the test data. We can compare this to the empirical risk against the training data to get a sense of over/underfitting. The results of this calculation are shown in <a href="#tbl-baselineloss" class="quarto-xref">Table&nbsp;2</a>. The values are not sufficiently different to cause concern.</p>
+<div class="cell">
+<div id="tbl-baselineloss" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-baselineloss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: The mean empirical loss (i.e., the empirical risk) of the linear model over the test dataset for <span class="math inline">\(\tau \in {0.1,0.5,0.9}\)</span>.
+</figcaption>
+<div aria-describedby="tbl-baselineloss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 47%">
+<col style="width: 46%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(0)};x_{\mathrm{train}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(0)};x_{\mathrm{test}})\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.685</td>
+<td style="text-align: right;">0.745</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.953</td>
+<td style="text-align: right;">1.859</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">1.231</td>
+<td style="text-align: right;">1.032</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>Finally, we would like to gather an impression the accuracy of the quantile calculation in this model. Let <span class="math display">\[
+\hat C_\tau^{(0)}=\frac{1}{n_\mathrm{test}}\sum_{i\in\mathrm{test}}\mathbf{1}_{\left\{Y_i\leq f_\tau^{(0)}(X_i)\right\}}
+\]</span> denote the empirical coverage, which measures the proportion of test responses which lie below the <span class="math inline">\(\tau\)</span>-quantile. For well-calibrated models, <span class="math inline">\(\hat C_\tau^{(0)}\approx \tau\)</span>. Thus, we can evaluate the calibration of the baseline linear models by calculating their empirical coverages, which can be found in <a href="#tbl-baselinecover" class="quarto-xref">Table&nbsp;3</a>. Since these values are each near the true (respective) value of <span class="math inline">\(\tau\)</span>, it is clear that the model is well-calibrated.</p>
+<div class="cell">
+<div id="tbl-baselinecover" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-baselinecover-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: The empirical coverage of the linear model for <span class="math inline">\(\tau\in{0.1,0.5,0.9}\)</span>.
+</figcaption>
+<div aria-describedby="tbl-baselinecover-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat C_{\tau}^{(0)}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.112</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.513</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.928</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="sec-nonlin" class="level2">
+<h2 class="anchored" data-anchor-id="sec-nonlin">Nonlinear Models for Varying Quantiles</h2>
+<p>Now, let us consider the following nonlinear model: <span class="math display">\[
+f_\tau^{(1)}(x) = \beta_{0,\tau}^{(1)} + \beta_{1,\tau}^{(1)}\texttt{lstat} + \beta_{2,\tau}^{(1)}\texttt{rm} + \beta_{3,\tau}^{(1)}\texttt{lstat}^2 + \beta_{4,\tau}^{(1)}\texttt{rm}^2 + \beta_{5,\tau}^{(1)}\texttt{lstat}\times\texttt{rm}
+\]</span> Similarly to the linear models, I use <code>optim</code> with Nelder-Mead and starting values <span class="math inline">\((\beta_{0,\tau}^{(1)},\beta_{1,\tau}^{(1)},\beta_{2,\tau}^{(1)}, \beta_{3,\tau}^{(1)},\beta_{4,\tau}^{(1)}, \beta_{5,\tau}^{(1)})\)</span> <span class="math inline">\(=(\bar y, 0, 0,0,0,0)\)</span> to minimise the average empirical loss (or, empirical risk) over the training dataset. The optimised coefficients are presented in <a href="#tbl-nonlincoefs" class="quarto-xref">Table&nbsp;4</a>.</p>
+<div class="cell">
+<div id="tbl-nonlincoefs" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-nonlincoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: The coefficient estimates of the nonlinear model that minimise the average empirical loss over the training data, for <span class="math inline">\(\tau\in{0.1,0.5,0.9}\)</span>.
+</figcaption>
+<div aria-describedby="tbl-nonlincoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 4%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{0,\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{1,\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{2,\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{3,\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{4,\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{5,\tau}^{(1)}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">23.952</td>
+<td style="text-align: right;">-0.539</td>
+<td style="text-align: right;">-0.786</td>
+<td style="text-align: right;">0.014</td>
+<td style="text-align: right;">0.273</td>
+<td style="text-align: right;">-0.109</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">20.382</td>
+<td style="text-align: right;">-0.800</td>
+<td style="text-align: right;">0.464</td>
+<td style="text-align: right;">0.024</td>
+<td style="text-align: right;">0.336</td>
+<td style="text-align: right;">-0.125</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">26.595</td>
+<td style="text-align: right;">-0.322</td>
+<td style="text-align: right;">0.809</td>
+<td style="text-align: right;">0.054</td>
+<td style="text-align: right;">0.409</td>
+<td style="text-align: right;">-0.358</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>Now, to evaluate this model, we look again at the average empirical loss and the empirical coverage on the test data. These calculations are included in <a href="#tbl-nonlineval" class="quarto-xref">Table&nbsp;5</a>. The empirical risk does not change drastically between training and testing for any <span class="math inline">\(\tau\)</span>, meaning that overfitting has been avoided. Furthermore, the empirical coverage is near the true value of <span class="math inline">\(\tau\)</span> for all <span class="math inline">\(\tau\)</span>, indicating the model is well-calibrated.</p>
+<div class="cell">
+<div id="tbl-nonlineval" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-nonlineval-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;5: The empirical risk (for training and testing data) and coverage of the nonlinear model for <span class="math inline">\(\tau\in{0.1,0.5,0.9}\)</span>.
+</figcaption>
+<div aria-describedby="tbl-nonlineval-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 39%">
+<col style="width: 38%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(1)};X_{\textrm{train}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(1)};X_{\textrm{test}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat C_{\tau}^{(1)}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.654</td>
+<td style="text-align: right;">0.688</td>
+<td style="text-align: right;">0.105</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.741</td>
+<td style="text-align: right;">1.687</td>
+<td style="text-align: right;">0.553</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.980</td>
+<td style="text-align: right;">0.917</td>
+<td style="text-align: right;">0.901</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="sec-ridge" class="level2">
+<h2 class="anchored" data-anchor-id="sec-ridge">Ridge Regression for Varying Quantiles</h2>
+<p>Now, I implement a ridge regression model. This model penalises large coefficients in order to reduce model complexity. In particular, the coefficients solve the following equation: <span class="math display">\[
+\hat \beta_{\tau,\lambda}^{\textrm{ridge}}= \arg\min_{\beta}\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta)
+\]</span> where <span class="math inline">\(\beta\)</span> is a vector of coefficients and <span class="math inline">\(\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta)\)</span> is the ridge-penalised empirical risk given by <span class="math display">\[
+\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta) = \frac{1}{n_\mathrm{train}}\sum_{i\in\mathrm{train}}\ell_\tau(Y_i, f_\tau^{(1)}(X_i;\beta)) + \lambda\|\beta\|^2_2.
+\]</span> where <span class="math inline">\(\lambda &gt; 0\)</span> is meant to regularise the coefficients and <span class="math inline">\(\|\cdot\|_2\)</span> denotes the <span class="math inline">\(\ell_2\)</span> norm. In other words, we are now optimising <span class="math inline">\(\beta\)</span> over the mean loss (the same as in the previous sections) summed with a penalisation term, <span class="math inline">\(\lambda\|\beta\|^2\)</span>.</p>
+<p>Setting an appropriate value of <span class="math inline">\(\lambda\)</span> takes some fine-tuning. Thus, I implement a <span class="math inline">\(k\)</span>-fold cross-validation algorithm to select an optimal <span class="math inline">\(\lambda\in[10^{-4},10^{-1}]\)</span> for each <span class="math inline">\(\tau\)</span>. Using <span class="math inline">\(k=5\)</span> folds on each candidate value of <span class="math inline">\(\lambda\)</span>, I iteratively fit the ridge-penalised model over the training data, minimising the ridge-penalised empirical risk using <code>optim</code> as described in previous sections. I then selected the value of <span class="math inline">\(\lambda\)</span> that minimised the mean risk over all <span class="math inline">\(k\)</span>-folds, and refit the model using this value of <span class="math inline">\(\lambda\)</span>. The coefficients for the ridge-penalised model (at each value of <span class="math inline">\(\tau\)</span>) may be found in <a href="#tbl-ridgecoefs" class="quarto-xref">Table&nbsp;6</a>, along with the <span class="math inline">\(\lambda\)</span> selected through cross-validation. For each <span class="math inline">\(\tau\)</span>, the <span class="math inline">\(\lambda\)</span> selected is the left endpoint of the candidate region, <span class="math inline">\(10^{-4}\)</span>. This means the penalisation for larger coefficients in model is very small, and thus the ridge-penalisation does not cause a major difference in the fit compared to the nonlinear model from <a href="#sec-nonlin" class="quarto-xref">Section&nbsp;3</a>.</p>
+<div class="cell">
+<div id="tbl-ridgecoefs" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-ridgecoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;6: The <span class="math inline">\(\lambda\)</span> selected for each value of <span class="math inline">\(\tau\)</span> using <span class="math inline">\(k\)</span>-fold cross-validation, and the coefficient estimates for the corresponding ridge-penalised nonlinear model.
+</figcaption>
+<div aria-describedby="tbl-ridgecoefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 1%">
+<col style="width: 6%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\lambda_{\textrm{min}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{0;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{1;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{2;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{3;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{4;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat \beta_{5;\tau,\lambda_{\textrm{min}}}^{\textrm{ridge}}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.0001</td>
+<td style="text-align: right;">23.6932</td>
+<td style="text-align: right;">-0.4684</td>
+<td style="text-align: right;">-0.4703</td>
+<td style="text-align: right;">0.0139</td>
+<td style="text-align: right;">0.2359</td>
+<td style="text-align: right;">-0.1261</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.0001</td>
+<td style="text-align: right;">12.2976</td>
+<td style="text-align: right;">-0.2026</td>
+<td style="text-align: right;">0.9951</td>
+<td style="text-align: right;">0.0263</td>
+<td style="text-align: right;">0.4695</td>
+<td style="text-align: right;">-0.2359</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.0001</td>
+<td style="text-align: right;">26.9021</td>
+<td style="text-align: right;">0.0781</td>
+<td style="text-align: right;">-0.4700</td>
+<td style="text-align: right;">0.0411</td>
+<td style="text-align: right;">0.5533</td>
+<td style="text-align: right;">-0.3607</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The average empirical test loss, average empirical training loss, and the empirical coverage of the ridge-penalised model are included in <a href="#tbl-ridgeeval" class="quarto-xref">Table&nbsp;7</a>. Once again, there appears to be no overfitting, and the empirical coverages approximate the true values of <span class="math inline">\(\tau\)</span>.</p>
+<div class="cell">
+<div id="tbl-ridgeeval" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-ridgeeval-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7: The empirical risk (for training and testing data) and coverage of the ridge-penalised model for <span class="math inline">\(\tau\in{0.1,0.5,0.9}\)</span>.
+</figcaption>
+<div aria-describedby="tbl-ridgeeval-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 2%">
+<col style="width: 40%">
+<col style="width: 41%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat R_{\tau,\lambda}^{\mathrm{ridge}}(\hat\beta_{\tau,\lambda_\mathrm{min}};x_{\mathrm{test}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat R_{\tau,\lambda}^{\mathrm{ridge}}(\hat\beta_{\tau,\lambda_\mathrm{min}};x_{\mathrm{train}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat C_{\tau}^{\mathrm{ridge}}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.749</td>
+<td style="text-align: right;">0.713</td>
+<td style="text-align: right;">0.105</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.673</td>
+<td style="text-align: right;">1.741</td>
+<td style="text-align: right;">0.513</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.935</td>
+<td style="text-align: right;">1.034</td>
+<td style="text-align: right;">0.908</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="comparison" class="level2">
+<h2 class="anchored" data-anchor-id="comparison">Comparison</h2>
+<p>In this section, I compare the three models constructed above with regards to coeﬃcient magnitudes, test loss, overfitting and empirical coverage.</p>
+<p>The coefficients for the linear, nonlinear, and ridge-penalised models are available in <a href="#tbl-baselinecoefs" class="quarto-xref">Table&nbsp;1</a>, <a href="#tbl-nonlincoefs" class="quarto-xref">Table&nbsp;4</a>, and <a href="#tbl-ridgecoefs" class="quarto-xref">Table&nbsp;6</a>, respectively. For each of these models, the actual coefficient values can be sensitive to the seed used to randomly split the full dataset into training and testing datasets. This is most pertinent with regards to the constant term, <span class="math inline">\(\hat\beta_{0,\tau}\)</span>, which can have very different magnitudes depending on what observations are used to train the model; however, while <span class="math inline">\(\hat\beta_{0,\tau}^{(0)}\)</span> can be negative depending on training data and quantile level, the nonlinear model and ridge-penalised model tend to produce positive constant terms. These latter estimates are potentially more realistic, as a negative median house value is illogical. Beyond the constant term, some general observations can be made on coefficient magnitude regardless of training data. The baseline linear model typically has much larger non-constant coefficients compared to the nonlinear and ridge-penalised models. As discussed in <a href="#sec-ridge" class="quarto-xref">Section&nbsp;4</a>, the small value of <span class="math inline">\(\lambda\)</span> in the ridge-penalised model indicates that a ridge regularisation did not largely improve the nonlinear model fit, and thus there does not tend to be a major difference between these two models’ coefficients.</p>
+<p>The average empirical test loss of each model is compared in <a href="#tbl-testlosscomp" class="quarto-xref">Table&nbsp;8</a>. Some of these values are repeated from <a href="#tbl-baselineloss" class="quarto-xref">Table&nbsp;2</a>, <a href="#tbl-nonlineval" class="quarto-xref">Table&nbsp;5</a>, and <a href="#tbl-ridgeeval" class="quarto-xref">Table&nbsp;7</a> for ease of comparison. Though the precise values are sensitive to the randomised testing/training split, the risk tends to decrease from the baseline to the nonlinear model, especially for larger values of <span class="math inline">\(\tau\)</span>. The ridge penalisation does not greatly affect the empirical risk positively, and in some cases the empirical risk actually increases with the addition of the risk penalisation.</p>
+<div class="cell">
+<div id="tbl-testlosscomp" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-testlosscomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;8: Comparison of average empirical loss of each model on the testing dataset.
+</figcaption>
+<div aria-describedby="tbl-testlosscomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 23%">
+<col style="width: 23%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(0)};x_{\mathrm{test}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(1)};x_{\mathrm{test}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat R_{\tau,\lambda}^{\mathrm{ridge}}(\hat\beta_{\tau,\lambda_\mathrm{min}};x_{\mathrm{test}})\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.745</td>
+<td style="text-align: right;">0.688</td>
+<td style="text-align: right;">0.749</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.859</td>
+<td style="text-align: right;">1.687</td>
+<td style="text-align: right;">1.673</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">1.032</td>
+<td style="text-align: right;">0.917</td>
+<td style="text-align: right;">0.935</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>To evaluate overfitting, we can compare the average empirical loss over the training set with that over the testing set. Thus, I include the average empirical training loss in <a href="#tbl-trainlosscomp" class="quarto-xref">Table&nbsp;9</a>. Once again, some of these values are repeated from other tables. For each model, there is not a great change in values between <a href="#tbl-trainlosscomp" class="quarto-xref">Table&nbsp;9</a> and <a href="#tbl-testlosscomp" class="quarto-xref">Table&nbsp;8</a>. This indicates that no overfitting is occurring, as the models are robust enough to evaluate unseen data with the same level of accuracy as the data they were trained on.</p>
+<div class="cell">
+<div id="tbl-trainlosscomp" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-trainlosscomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;9: Comparison of average empirical loss of each model on the training dataset.
+</figcaption>
+<div aria-describedby="tbl-trainlosscomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 24%">
+<col style="width: 24%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(0)};x_{\mathrm{train}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\hat R_{\tau}(f_{\tau}^{(1)};x_{\mathrm{train}})\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat R_{\tau,\lambda}^{\mathrm{ridge}}(\hat\beta_{\tau,\lambda_\mathrm{min}};x_{\mathrm{train}})\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.685</td>
+<td style="text-align: right;">0.654</td>
+<td style="text-align: right;">0.713</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.953</td>
+<td style="text-align: right;">1.741</td>
+<td style="text-align: right;">1.741</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">1.231</td>
+<td style="text-align: right;">0.980</td>
+<td style="text-align: right;">1.034</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>Finally, we evaluate the empirical coverage of each model for each value of <span class="math inline">\(\tau\)</span>. The coverage values are included in <a href="#tbl-covcomp" class="quarto-xref">Table&nbsp;10</a>. The ridge-penalised model tends to have empirical coverage nearest the true value of <span class="math inline">\(\tau\)</span>, but all models are well-calibrated and thus have empirical coverage approximately equal to <span class="math inline">\(\tau\)</span>.</p>
+<div class="cell">
+<div id="tbl-covcomp" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-covcomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10: Comparison of empirical coverage of each model.
+</figcaption>
+<div aria-describedby="tbl-covcomp-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\tau\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat C_{\tau}^{(0)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat C_{\tau}^{(1)}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\widehat C_{\tau}^{\mathrm{ridge}}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.112</td>
+<td style="text-align: right;">0.105</td>
+<td style="text-align: right;">0.105</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.513</td>
+<td style="text-align: right;">0.553</td>
+<td style="text-align: right;">0.513</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.928</td>
+<td style="text-align: right;">0.901</td>
+<td style="text-align: right;">0.908</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>Overall, if I had to pick only one model to use, I would choose the nonlinear model, <span class="math inline">\(f_\tau^{(1)}\)</span>. This model had better performance than the linear model, and the slightly better performance of the ridge-penalised model in some cases is not necessarily worth the added computational complexity necessary of the latter.</p>
+</section>
+<section id="theoretical-guarantees-of-quantiles" class="level2">
+<h2 class="anchored" data-anchor-id="theoretical-guarantees-of-quantiles">Theoretical Guarantees of Quantiles</h2>
+<p>The theoretical (true) quantiles, <span class="math inline">\(q_\tau(x)\)</span>, never cross, meaning <span class="math inline">\(q_\tau(x)&lt;q_{\tau'}(x)\)</span> for all <span class="math inline">\(x\)</span> so long as <span class="math inline">\(\tau,\tau'\in(0,1)\)</span> and <span class="math inline">\(\tau &lt; \tau'\)</span>. However, this does not necessarily occur in the quantile regression implemented in this question thus far. The average empirical loss is only minimised for a single value of <span class="math inline">\(\tau\)</span>. Thus, in its current state, the model has no way of minimising with regard to other quantiles, let alone minimising to ensure that quantile estimates never cross.</p>
+<p>In order to train a model on each <span class="math inline">\(\tau \in \{0.1, 0.5, 0.9\}\)</span> that <em>does</em> ensure quantile estimates never (or at least rarely) cross, we need a risk function that accounts for the possibility of crossing and penalises it. Assume we have multi-output model <span class="math inline">\(f= (f_{\tau_1}, f_{\tau_2}, \dots, f_{\tau_N})\)</span> that we would like to fit. Then, as a risk function, I propose the empirical mean loss summed with a hinge penalisation (see <span class="citation" data-cites="loss_func">Rosasco et al. (<a href="#ref-loss_func" role="doc-biblioref">2004</a>)</span> p.&nbsp;1067) term on crossings: <span class="math display">\[
+\widehat R_{\tau, \lambda}^\mathrm{cross}(\beta) = \frac{1}{n_\mathrm{train}}\sum_{i\in\mathrm{train}}\left(\ell(Y_i, f (X_i;\beta)) + \lambda\sum_{j = 1}^N\max\{(f_{\tau_{j}}(X_i;\beta)-f_{\tau_{j+1}}(X_i;\beta)), 0\}\right)
+\]</span> where <span class="math inline">\(\lambda &gt;0\)</span> is a regularisation constant and the <span class="math inline">\(\ell(y,q)=(\ell_{\tau_1}(y, q),\ell_{\tau_2}(y, q),\dots,\ell_{\tau_N}(y, q))\)</span> is a multi-output loss function composed of each individual asymmetric loss (following the definition presented at the beginning of Question 2). Essentially, this risk function would at once fit the asymmetric quantile loss function while penalising any fits that allow crossing. The <span class="math inline">\(\max\{f_{\tau_j}-f_{\tau_{j+1}}, 0\}\)</span> term will evaluate to 0 when crossing does not occur, giving no penalty, but evaluates to a positive number when crossing does occur. Thus, we can penalise crossing while using the same loss function. This is a version of a hinge loss function, used in classification models, but here incorporated as a penalising term <span class="citation" data-cites="loss_func">(<a href="#ref-loss_func" role="doc-biblioref">Rosasco et al. 2004</a>)</span>.</p>
+<p>To implement this for <span class="math inline">\(\tau\in \{0.1,0.5,0.9\}\)</span>, I would run a similar <span class="math inline">\(k\)</span>-fold cross-validation to the one constructed in <a href="#sec-ridge" class="quarto-xref">Section&nbsp;4</a> to find the optimal value of <span class="math inline">\(\lambda\)</span> across the set of <span class="math inline">\(\tau\)</span> values. I would then fit the model for the given <span class="math inline">\(\lambda\)</span>, minimising the risk <span class="math inline">\(\widehat R_{\tau, \lambda}^\mathrm{cross}(\beta)\)</span>. This should result in a model that minimises crossing as much as possible.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-loss_func" class="csl-entry" role="listitem">
+Rosasco, Lorenzo, Ernesto De Vito, Andrea Caponnetto, Michele Piana, and Alessandro Verri. 2004. <span>“Are Loss Functions All the Same?”</span> <em>Neural Computation</em> 16 (5): 1063–76. <a href="https://doi.org/10.1162/089976604773135104">https://doi.org/10.1162/089976604773135104</a>.
+</div>
+</div>
+</section>
+<section id="sec-code" class="level2">
+<h2 class="anchored" data-anchor-id="sec-code">Code Appendix</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Document setup</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">echo =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">collapse =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">comment =</span> <span class="st">"#&gt;"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">dev =</span> <span class="st">"ragg_png"</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kableExtra)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Question 2</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">4747</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(<span class="st">"Boston"</span>, <span class="at">package=</span><span class="st">"MASS"</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>model_data <span class="ot">&lt;-</span> <span class="fu">subset</span>(Boston, <span class="at">select =</span> <span class="fu">c</span>(<span class="st">"medv"</span>, <span class="st">"lstat"</span>, <span class="st">"rm"</span>))</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>train_size <span class="ot">&lt;-</span> <span class="fu">floor</span>(<span class="fl">0.7</span> <span class="sc">*</span> <span class="fu">nrow</span>(Boston))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>idx <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(Boston), train_size)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>boston_train <span class="ot">&lt;-</span> model_data[idx,]</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>boston_test <span class="ot">&lt;-</span> model_data[<span class="sc">-</span>idx,]</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co"># part (a)</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>loss <span class="ot">&lt;-</span> <span class="cf">function</span>(tau,y,q){</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  ans <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(y <span class="sc">&gt;</span> q, tau<span class="sc">*</span>(y<span class="sc">-</span>q), (tau<span class="dv">-1</span>)<span class="sc">*</span>(y<span class="sc">-</span>q))</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(ans)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>empirical_loss <span class="ot">&lt;-</span> <span class="cf">function</span>(coefs, data, quantile){</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  beta0 <span class="ot">&lt;-</span> coefs[<span class="dv">1</span>]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  beta1 <span class="ot">&lt;-</span> coefs[<span class="dv">2</span>]</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  beta2 <span class="ot">&lt;-</span> coefs[<span class="dv">3</span>]</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> beta0 <span class="sc">+</span> beta1 <span class="sc">*</span> data<span class="sc">$</span>lstat <span class="sc">+</span> beta2 <span class="sc">*</span> data<span class="sc">$</span>rm</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">loss</span>(quantile, data<span class="sc">$</span>medv, q))</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co"># bullet 1</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>taus <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span>)</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>coefs_init <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">mean</span>(boston_train<span class="sc">$</span>medv), <span class="dv">0</span>, <span class="dv">0</span>)</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>opt_res <span class="ot">&lt;-</span> <span class="fu">lapply</span>(taus,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">function</span>(tau){<span class="fu">optim</span>(<span class="at">par =</span> coefs_init,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">fn =</span> empirical_loss,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">data =</span> boston_train,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">quantile =</span> tau,</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">method =</span> <span class="st">"Nelder-Mead"</span>)</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>                    })</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>opt_res_table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>                            <span class="at">beta0 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>                                           <span class="cf">function</span>(i) opt_res[[i]]<span class="sc">$</span>par[[<span class="dv">1</span>]]),</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>                            <span class="at">beta1 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>                                           <span class="cf">function</span>(i) opt_res[[i]]<span class="sc">$</span>par[[<span class="dv">2</span>]]),</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>                            <span class="at">beta2 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>                                           <span class="cf">function</span>(i) opt_res[[i]]<span class="sc">$</span>par[[<span class="dv">3</span>]]))</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(opt_res_table,</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{0,</span><span class="sc">\\</span><span class="st">tau}^{(0)}$"</span>,</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{1,</span><span class="sc">\\</span><span class="st">tau}^{(0)}$"</span>,</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{2,</span><span class="sc">\\</span><span class="st">tau}^{(0)}$"</span>),</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co"># bullet 2</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>opt_res_test <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>  <span class="at">tau =</span> taus,</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>  <span class="at">emp_loss_train =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> opt_res[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>    <span class="fu">empirical_loss</span>(model_coefs, boston_train, taus[[i]])</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>}),</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>  <span class="at">emp_loss_test =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> opt_res[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>    <span class="fu">empirical_loss</span>(model_coefs, boston_test, taus[[i]])</span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(opt_res_test,</span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>             <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(0)};x_{</span><span class="sc">\\</span><span class="st">mathrm{train}})$"</span>,</span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>             <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(0)};x_{</span><span class="sc">\\</span><span class="st">mathrm{test}})$"</span>),</span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>empirical_coverage <span class="ot">&lt;-</span> <span class="cf">function</span>(coefs, data){</span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>  beta0 <span class="ot">&lt;-</span> coefs[<span class="dv">1</span>]</span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>  beta1 <span class="ot">&lt;-</span> coefs[<span class="dv">2</span>]</span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>  beta2 <span class="ot">&lt;-</span> coefs[<span class="dv">3</span>]</span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> beta0 <span class="sc">+</span> beta1 <span class="sc">*</span> data<span class="sc">$</span>lstat <span class="sc">+</span> beta2 <span class="sc">*</span> data<span class="sc">$</span>rm</span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>  y <span class="ot">&lt;-</span> data<span class="sc">$</span>medv</span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(y), <span class="cf">function</span>(i) y[[i]] <span class="sc">&lt;=</span> q[[i]]))</span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>coverages <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>  <span class="at">tau =</span> taus,</span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>  <span class="at">emp_cov =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> opt_res[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>    <span class="fu">empirical_coverage</span>(model_coefs, boston_test)</span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(coverages,</span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat C_{</span><span class="sc">\\</span><span class="st">tau}^{(0)}$"</span>),</span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>nonlinear_model_data <span class="ot">&lt;-</span> model_data <span class="sc">%&gt;%</span></span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lstatsq =</span> <span class="fu">I</span>(lstat<span class="sc">^</span><span class="dv">2</span>),</span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>         <span class="at">rmsq =</span> <span class="fu">I</span>(rm<span class="sc">^</span><span class="dv">2</span>),</span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>         <span class="at">lstatrm =</span> <span class="fu">I</span>(lstat<span class="sc">*</span>rm))</span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>nonlin_train <span class="ot">&lt;-</span> nonlinear_model_data[idx,]</span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>nonlin_test <span class="ot">&lt;-</span> nonlinear_model_data[<span class="sc">-</span>idx,]</span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>nonlin_emp_loss <span class="ot">&lt;-</span> <span class="cf">function</span>(coefs, data, quantile){</span>
+<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>  beta0 <span class="ot">&lt;-</span> coefs[<span class="dv">1</span>]</span>
+<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>  beta1 <span class="ot">&lt;-</span> coefs[<span class="dv">2</span>]</span>
+<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>  beta2 <span class="ot">&lt;-</span> coefs[<span class="dv">3</span>]</span>
+<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>  beta3 <span class="ot">&lt;-</span> coefs[<span class="dv">4</span>]</span>
+<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>  beta4 <span class="ot">&lt;-</span> coefs[<span class="dv">5</span>]</span>
+<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>  beta5 <span class="ot">&lt;-</span> coefs[<span class="dv">6</span>]</span>
+<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> beta0 <span class="sc">+</span> beta1 <span class="sc">*</span> data<span class="sc">$</span>lstat <span class="sc">+</span> beta2 <span class="sc">*</span> data<span class="sc">$</span>rm <span class="sc">+</span> beta3 <span class="sc">*</span> data<span class="sc">$</span>lstatsq <span class="sc">+</span></span>
+<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>    beta4 <span class="sc">*</span> data<span class="sc">$</span>rmsq <span class="sc">+</span> beta5 <span class="sc">*</span> data<span class="sc">$</span>lstatrm</span>
+<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">loss</span>(quantile, data<span class="sc">$</span>medv, q))</span>
+<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a>coefs_init <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">mean</span>(nonlin_train<span class="sc">$</span>medv),<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>)</span>
+<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a>nonlin_opt <span class="ot">&lt;-</span> <span class="fu">lapply</span>(taus,</span>
+<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">function</span>(tau){<span class="fu">optim</span>(<span class="at">par =</span> coefs_init,</span>
+<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">fn =</span> nonlin_emp_loss,</span>
+<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">data =</span> nonlin_train,</span>
+<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">quantile =</span> tau,</span>
+<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">method =</span> <span class="st">"Nelder-Mead"</span>)</span>
+<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a>                    })</span>
+<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a>nonlin_table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta0 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">1</span>]]),</span>
+<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta1 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">2</span>]]),</span>
+<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta2 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">3</span>]]),</span>
+<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta3 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">4</span>]]),</span>
+<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta4 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">5</span>]]),</span>
+<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a>                           <span class="at">beta5 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a>                                          <span class="cf">function</span>(i) nonlin_opt[[i]]<span class="sc">$</span>par[[<span class="dv">6</span>]]))</span>
+<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(nonlin_table,</span>
+<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{0,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{1,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{2,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{3,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{4,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{5,</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>),</span>
+<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a>nonlin_cover <span class="ot">&lt;-</span> <span class="cf">function</span>(coefs, data){</span>
+<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a>  beta0 <span class="ot">&lt;-</span> coefs[<span class="dv">1</span>]</span>
+<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a>  beta1 <span class="ot">&lt;-</span> coefs[<span class="dv">2</span>]</span>
+<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a>  beta2 <span class="ot">&lt;-</span> coefs[<span class="dv">3</span>]</span>
+<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a>  beta3 <span class="ot">&lt;-</span> coefs[<span class="dv">4</span>]</span>
+<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>  beta4 <span class="ot">&lt;-</span> coefs[<span class="dv">5</span>]</span>
+<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a>  beta5 <span class="ot">&lt;-</span> coefs[<span class="dv">6</span>]</span>
+<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> beta0 <span class="sc">+</span> beta1 <span class="sc">*</span> data<span class="sc">$</span>lstat <span class="sc">+</span> beta2 <span class="sc">*</span> data<span class="sc">$</span>rm <span class="sc">+</span> beta3 <span class="sc">*</span> data<span class="sc">$</span>lstatsq <span class="sc">+</span></span>
+<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>    beta4 <span class="sc">*</span> data<span class="sc">$</span>rmsq <span class="sc">+</span> beta5 <span class="sc">*</span> data<span class="sc">$</span>lstatrm</span>
+<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a>  y <span class="ot">&lt;-</span> data<span class="sc">$</span>medv</span>
+<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(y), <span class="cf">function</span>(i) y[[i]] <span class="sc">&lt;=</span> q[[i]]))</span>
+<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a>nonlin_test_table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>  <span class="at">tau =</span> taus,</span>
+<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a>  <span class="at">train_loss =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> nonlin_opt[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a>    <span class="fu">nonlin_emp_loss</span>(model_coefs, nonlin_train, taus[[i]])}),</span>
+<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_loss =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> nonlin_opt[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>    <span class="fu">nonlin_emp_loss</span>(model_coefs, nonlin_test, taus[[i]])}),</span>
+<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a>  <span class="at">emp_cov =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>    model_coefs <span class="ot">&lt;-</span> nonlin_opt[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a>    <span class="fu">nonlin_cover</span>(model_coefs, nonlin_test)</span>
+<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(nonlin_test_table,</span>
+<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(</span>
+<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(1)};X_{</span><span class="sc">\\</span><span class="st">textrm{train}})$"</span>,</span>
+<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(1)};X_{</span><span class="sc">\\</span><span class="st">textrm{test}})$"</span>,</span>
+<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat C_{</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>),</span>
+<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a><span class="co"># defining ridge regression risk estimator</span></span>
+<span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a>ridge_risk <span class="ot">&lt;-</span> <span class="cf">function</span>(coefs, data, tau, lambda){</span>
+<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a>  beta0 <span class="ot">&lt;-</span> coefs[<span class="dv">1</span>]</span>
+<span id="cb1-184"><a href="#cb1-184" aria-hidden="true" tabindex="-1"></a>  beta1 <span class="ot">&lt;-</span> coefs[<span class="dv">2</span>]</span>
+<span id="cb1-185"><a href="#cb1-185" aria-hidden="true" tabindex="-1"></a>  beta2 <span class="ot">&lt;-</span> coefs[<span class="dv">3</span>]</span>
+<span id="cb1-186"><a href="#cb1-186" aria-hidden="true" tabindex="-1"></a>  beta3 <span class="ot">&lt;-</span> coefs[<span class="dv">4</span>]</span>
+<span id="cb1-187"><a href="#cb1-187" aria-hidden="true" tabindex="-1"></a>  beta4 <span class="ot">&lt;-</span> coefs[<span class="dv">5</span>]</span>
+<span id="cb1-188"><a href="#cb1-188" aria-hidden="true" tabindex="-1"></a>  beta5 <span class="ot">&lt;-</span> coefs[<span class="dv">6</span>]</span>
+<span id="cb1-189"><a href="#cb1-189" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-190"><a href="#cb1-190" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> beta0 <span class="sc">+</span> beta1 <span class="sc">*</span> data<span class="sc">$</span>lstat <span class="sc">+</span> beta2 <span class="sc">*</span> data<span class="sc">$</span>rm <span class="sc">+</span> beta3 <span class="sc">*</span> data<span class="sc">$</span>lstatsq <span class="sc">+</span></span>
+<span id="cb1-191"><a href="#cb1-191" aria-hidden="true" tabindex="-1"></a>    beta4 <span class="sc">*</span> data<span class="sc">$</span>rmsq <span class="sc">+</span> beta5 <span class="sc">*</span> data<span class="sc">$</span>lstatrm</span>
+<span id="cb1-192"><a href="#cb1-192" aria-hidden="true" tabindex="-1"></a>  mean_loss <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">loss</span>(tau, data<span class="sc">$</span>medv, q))</span>
+<span id="cb1-193"><a href="#cb1-193" aria-hidden="true" tabindex="-1"></a>  penalisation <span class="ot">&lt;-</span> lambda <span class="sc">*</span> <span class="fu">sum</span>(coefs<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb1-194"><a href="#cb1-194" aria-hidden="true" tabindex="-1"></a>  mean_loss <span class="sc">+</span> penalisation</span>
+<span id="cb1-195"><a href="#cb1-195" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-196"><a href="#cb1-196" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-197"><a href="#cb1-197" aria-hidden="true" tabindex="-1"></a><span class="co"># k-fold cross-validation for lambdas</span></span>
+<span id="cb1-198"><a href="#cb1-198" aria-hidden="true" tabindex="-1"></a>kfold_cv <span class="ot">&lt;-</span> <span class="cf">function</span>(kfold, candidates, tau){</span>
+<span id="cb1-199"><a href="#cb1-199" aria-hidden="true" tabindex="-1"></a>  fold <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>kfold, <span class="at">length.out =</span> train_size))</span>
+<span id="cb1-200"><a href="#cb1-200" aria-hidden="true" tabindex="-1"></a>  cv_risk <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(candidates))</span>
+<span id="cb1-201"><a href="#cb1-201" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-202"><a href="#cb1-202" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (lambda <span class="cf">in</span> candidates){</span>
+<span id="cb1-203"><a href="#cb1-203" aria-hidden="true" tabindex="-1"></a>    errs <span class="ot">&lt;-</span> <span class="fu">numeric</span>(kfold)</span>
+<span id="cb1-204"><a href="#cb1-204" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>kfold) {</span>
+<span id="cb1-205"><a href="#cb1-205" aria-hidden="true" tabindex="-1"></a>      tr <span class="ot">&lt;-</span> fold <span class="sc">!=</span> j</span>
+<span id="cb1-206"><a href="#cb1-206" aria-hidden="true" tabindex="-1"></a>      va <span class="ot">&lt;-</span> fold <span class="sc">==</span> j</span>
+<span id="cb1-207"><a href="#cb1-207" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-208"><a href="#cb1-208" aria-hidden="true" tabindex="-1"></a>      <span class="co"># build training and validation data frames with consistent variable names</span></span>
+<span id="cb1-209"><a href="#cb1-209" aria-hidden="true" tabindex="-1"></a>      df_tr <span class="ot">&lt;-</span> nonlin_train[tr,]</span>
+<span id="cb1-210"><a href="#cb1-210" aria-hidden="true" tabindex="-1"></a>      df_va <span class="ot">&lt;-</span> nonlin_train[va,]</span>
+<span id="cb1-211"><a href="#cb1-211" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-212"><a href="#cb1-212" aria-hidden="true" tabindex="-1"></a>      <span class="co"># fit model using consistent variable names</span></span>
+<span id="cb1-213"><a href="#cb1-213" aria-hidden="true" tabindex="-1"></a>      fit <span class="ot">&lt;-</span> <span class="fu">optim</span>(<span class="at">par =</span> coefs_init,</span>
+<span id="cb1-214"><a href="#cb1-214" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fn =</span> ridge_risk,</span>
+<span id="cb1-215"><a href="#cb1-215" aria-hidden="true" tabindex="-1"></a>                 <span class="at">data =</span> df_tr,</span>
+<span id="cb1-216"><a href="#cb1-216" aria-hidden="true" tabindex="-1"></a>                 <span class="at">tau =</span> tau,</span>
+<span id="cb1-217"><a href="#cb1-217" aria-hidden="true" tabindex="-1"></a>                 <span class="at">lambda =</span> lambda,</span>
+<span id="cb1-218"><a href="#cb1-218" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"Nelder-Mead"</span>)</span>
+<span id="cb1-219"><a href="#cb1-219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-220"><a href="#cb1-220" aria-hidden="true" tabindex="-1"></a>      <span class="co"># predict using consistent names</span></span>
+<span id="cb1-221"><a href="#cb1-221" aria-hidden="true" tabindex="-1"></a>      errs[j] <span class="ot">&lt;-</span> <span class="fu">ridge_risk</span>(fit<span class="sc">$</span>par, df_va, tau, lambda) <span class="do">## NEW RISK HERE</span></span>
+<span id="cb1-222"><a href="#cb1-222" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-223"><a href="#cb1-223" aria-hidden="true" tabindex="-1"></a>  cv_risk[lambda] <span class="ot">&lt;-</span> <span class="fu">mean</span>(errs)</span>
+<span id="cb1-224"><a href="#cb1-224" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-225"><a href="#cb1-225" aria-hidden="true" tabindex="-1"></a>  best_lambda <span class="ot">&lt;-</span> candidates[<span class="fu">which.min</span>(cv_risk)]</span>
+<span id="cb1-226"><a href="#cb1-226" aria-hidden="true" tabindex="-1"></a>  best_fit <span class="ot">&lt;-</span> <span class="fu">optim</span>(<span class="at">par =</span> coefs_init,</span>
+<span id="cb1-227"><a href="#cb1-227" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fn =</span> ridge_risk,</span>
+<span id="cb1-228"><a href="#cb1-228" aria-hidden="true" tabindex="-1"></a>                 <span class="at">data =</span> nonlin_train,</span>
+<span id="cb1-229"><a href="#cb1-229" aria-hidden="true" tabindex="-1"></a>                 <span class="at">tau =</span> tau,</span>
+<span id="cb1-230"><a href="#cb1-230" aria-hidden="true" tabindex="-1"></a>                 <span class="at">lambda =</span> best_lambda,</span>
+<span id="cb1-231"><a href="#cb1-231" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"Nelder-Mead"</span>)</span>
+<span id="cb1-232"><a href="#cb1-232" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">c</span>(best_lambda, best_fit))</span>
+<span id="cb1-233"><a href="#cb1-233" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-234"><a href="#cb1-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-235"><a href="#cb1-235" aria-hidden="true" tabindex="-1"></a>lambdas <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fl">1e-4</span>, <span class="fl">1e-1</span>, <span class="at">length.out =</span> <span class="dv">100</span>)</span>
+<span id="cb1-236"><a href="#cb1-236" aria-hidden="true" tabindex="-1"></a>ridge_results <span class="ot">&lt;-</span> <span class="fu">lapply</span>(taus,</span>
+<span id="cb1-237"><a href="#cb1-237" aria-hidden="true" tabindex="-1"></a>                        <span class="cf">function</span>(tau) <span class="fu">kfold_cv</span>(<span class="dv">5</span>, lambdas, tau))</span>
+<span id="cb1-238"><a href="#cb1-238" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-239"><a href="#cb1-239" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen =</span> <span class="dv">999</span>)</span>
+<span id="cb1-240"><a href="#cb1-240" aria-hidden="true" tabindex="-1"></a>ridge_table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-241"><a href="#cb1-241" aria-hidden="true" tabindex="-1"></a>             <span class="at">lambda =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-242"><a href="#cb1-242" aria-hidden="true" tabindex="-1"></a>                             <span class="cf">function</span>(i) ridge_results[[i]][[<span class="dv">1</span>]]),</span>
+<span id="cb1-243"><a href="#cb1-243" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta0 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-244"><a href="#cb1-244" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">1</span>]]),</span>
+<span id="cb1-245"><a href="#cb1-245" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta1 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-246"><a href="#cb1-246" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">2</span>]]),</span>
+<span id="cb1-247"><a href="#cb1-247" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta2 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-248"><a href="#cb1-248" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">3</span>]]),</span>
+<span id="cb1-249"><a href="#cb1-249" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta3 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-250"><a href="#cb1-250" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">4</span>]]),</span>
+<span id="cb1-251"><a href="#cb1-251" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta4 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-252"><a href="#cb1-252" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">5</span>]]),</span>
+<span id="cb1-253"><a href="#cb1-253" aria-hidden="true" tabindex="-1"></a>             <span class="at">beta5 =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb1-254"><a href="#cb1-254" aria-hidden="true" tabindex="-1"></a>                            <span class="cf">function</span>(i) ridge_results[[i]]<span class="sc">$</span>par[[<span class="dv">6</span>]]))</span>
+<span id="cb1-255"><a href="#cb1-255" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-256"><a href="#cb1-256" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(ridge_table,</span>
+<span id="cb1-257"><a href="#cb1-257" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-258"><a href="#cb1-258" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"$</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}$"</span>,</span>
+<span id="cb1-259"><a href="#cb1-259" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{0;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>,</span>
+<span id="cb1-260"><a href="#cb1-260" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{1;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>,</span>
+<span id="cb1-261"><a href="#cb1-261" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{2;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>,</span>
+<span id="cb1-262"><a href="#cb1-262" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{3;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>,</span>
+<span id="cb1-263"><a href="#cb1-263" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{4;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>,</span>
+<span id="cb1-264"><a href="#cb1-264" aria-hidden="true" tabindex="-1"></a>       <span class="st">"$</span><span class="sc">\\</span><span class="st">hat </span><span class="sc">\\</span><span class="st">beta_{5;</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_{</span><span class="sc">\\</span><span class="st">textrm{min}}}^{</span><span class="sc">\\</span><span class="st">textrm{ridge}}$"</span>),</span>
+<span id="cb1-265"><a href="#cb1-265" aria-hidden="true" tabindex="-1"></a>       <span class="at">digits =</span> <span class="dv">4</span>)</span>
+<span id="cb1-266"><a href="#cb1-266" aria-hidden="true" tabindex="-1"></a>ridgeeval <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-267"><a href="#cb1-267" aria-hidden="true" tabindex="-1"></a>                        <span class="at">testloss =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-268"><a href="#cb1-268" aria-hidden="true" tabindex="-1"></a>                        model_coefs <span class="ot">&lt;-</span> ridge_results[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-269"><a href="#cb1-269" aria-hidden="true" tabindex="-1"></a>                        <span class="fu">ridge_risk</span>(model_coefs, nonlin_test, taus[[i]],</span>
+<span id="cb1-270"><a href="#cb1-270" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">lambda =</span> <span class="fl">1e-4</span>)}),</span>
+<span id="cb1-271"><a href="#cb1-271" aria-hidden="true" tabindex="-1"></a>                        <span class="at">trainloss =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-272"><a href="#cb1-272" aria-hidden="true" tabindex="-1"></a>                        model_coefs <span class="ot">&lt;-</span> ridge_results[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-273"><a href="#cb1-273" aria-hidden="true" tabindex="-1"></a>                        <span class="fu">ridge_risk</span>(model_coefs, nonlin_train, taus[[i]],</span>
+<span id="cb1-274"><a href="#cb1-274" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">lambda =</span> <span class="fl">1e-4</span>)}),</span>
+<span id="cb1-275"><a href="#cb1-275" aria-hidden="true" tabindex="-1"></a>                        <span class="at">emp_cov =</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="cf">function</span>(i){</span>
+<span id="cb1-276"><a href="#cb1-276" aria-hidden="true" tabindex="-1"></a>                        model_coefs <span class="ot">&lt;-</span> ridge_results[[i]]<span class="sc">$</span>par</span>
+<span id="cb1-277"><a href="#cb1-277" aria-hidden="true" tabindex="-1"></a>                        <span class="fu">nonlin_cover</span>(model_coefs, nonlin_test)}))</span>
+<span id="cb1-278"><a href="#cb1-278" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-279"><a href="#cb1-279" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(ridgeeval,</span>
+<span id="cb1-280"><a href="#cb1-280" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-281"><a href="#cb1-281" aria-hidden="true" tabindex="-1"></a><span class="st">"$</span><span class="sc">\\</span><span class="st">widehat R_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}(</span><span class="sc">\\</span><span class="st">hat</span><span class="sc">\\</span><span class="st">beta_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_</span><span class="sc">\\</span><span class="st">mathrm{min}};x_{</span><span class="sc">\\</span><span class="st">mathrm{test}})$"</span>,</span>
+<span id="cb1-282"><a href="#cb1-282" aria-hidden="true" tabindex="-1"></a><span class="st">"$</span><span class="sc">\\</span><span class="st">widehat R_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}(</span><span class="sc">\\</span><span class="st">hat</span><span class="sc">\\</span><span class="st">beta_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_</span><span class="sc">\\</span><span class="st">mathrm{min}};x_{</span><span class="sc">\\</span><span class="st">mathrm{train}})$"</span>,</span>
+<span id="cb1-283"><a href="#cb1-283" aria-hidden="true" tabindex="-1"></a><span class="st">"$</span><span class="sc">\\</span><span class="st">widehat C_{</span><span class="sc">\\</span><span class="st">tau}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}$"</span>),</span>
+<span id="cb1-284"><a href="#cb1-284" aria-hidden="true" tabindex="-1"></a><span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-285"><a href="#cb1-285" aria-hidden="true" tabindex="-1"></a>testlosscomp <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-286"><a href="#cb1-286" aria-hidden="true" tabindex="-1"></a>                           <span class="at">baseline =</span> opt_res_test<span class="sc">$</span>emp_loss_test,</span>
+<span id="cb1-287"><a href="#cb1-287" aria-hidden="true" tabindex="-1"></a>                           <span class="at">nonlinear =</span> nonlin_test_table<span class="sc">$</span>test_loss,</span>
+<span id="cb1-288"><a href="#cb1-288" aria-hidden="true" tabindex="-1"></a>                           <span class="at">ridge =</span> ridgeeval<span class="sc">$</span>testloss)</span>
+<span id="cb1-289"><a href="#cb1-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-290"><a href="#cb1-290" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(testlosscomp,</span>
+<span id="cb1-291"><a href="#cb1-291" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-292"><a href="#cb1-292" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(0)};x_{</span><span class="sc">\\</span><span class="st">mathrm{test}})$"</span>,</span>
+<span id="cb1-293"><a href="#cb1-293" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(1)};x_{</span><span class="sc">\\</span><span class="st">mathrm{test}})$"</span>,</span>
+<span id="cb1-294"><a href="#cb1-294" aria-hidden="true" tabindex="-1"></a><span class="st">"$</span><span class="sc">\\</span><span class="st">widehat R_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}(</span><span class="sc">\\</span><span class="st">hat</span><span class="sc">\\</span><span class="st">beta_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_</span><span class="sc">\\</span><span class="st">mathrm{min}};x_{</span><span class="sc">\\</span><span class="st">mathrm{test}})$"</span></span>
+<span id="cb1-295"><a href="#cb1-295" aria-hidden="true" tabindex="-1"></a>             ),</span>
+<span id="cb1-296"><a href="#cb1-296" aria-hidden="true" tabindex="-1"></a><span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-297"><a href="#cb1-297" aria-hidden="true" tabindex="-1"></a>testlosscomp <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-298"><a href="#cb1-298" aria-hidden="true" tabindex="-1"></a>                           <span class="at">baseline =</span> opt_res_test<span class="sc">$</span>emp_loss_train,</span>
+<span id="cb1-299"><a href="#cb1-299" aria-hidden="true" tabindex="-1"></a>                           <span class="at">nonlinear =</span> nonlin_test_table<span class="sc">$</span>train_loss,</span>
+<span id="cb1-300"><a href="#cb1-300" aria-hidden="true" tabindex="-1"></a>                           <span class="at">ridge =</span> ridgeeval<span class="sc">$</span>trainloss)</span>
+<span id="cb1-301"><a href="#cb1-301" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-302"><a href="#cb1-302" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(testlosscomp,</span>
+<span id="cb1-303"><a href="#cb1-303" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-304"><a href="#cb1-304" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(0)};x_{</span><span class="sc">\\</span><span class="st">mathrm{train}})$"</span>,</span>
+<span id="cb1-305"><a href="#cb1-305" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">hat R_{</span><span class="sc">\\</span><span class="st">tau}(f_{</span><span class="sc">\\</span><span class="st">tau}^{(1)};x_{</span><span class="sc">\\</span><span class="st">mathrm{train}})$"</span>,</span>
+<span id="cb1-306"><a href="#cb1-306" aria-hidden="true" tabindex="-1"></a><span class="st">"$</span><span class="sc">\\</span><span class="st">widehat R_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}(</span><span class="sc">\\</span><span class="st">hat</span><span class="sc">\\</span><span class="st">beta_{</span><span class="sc">\\</span><span class="st">tau,</span><span class="sc">\\</span><span class="st">lambda_</span><span class="sc">\\</span><span class="st">mathrm{min}};x_{</span><span class="sc">\\</span><span class="st">mathrm{train}})$"</span></span>
+<span id="cb1-307"><a href="#cb1-307" aria-hidden="true" tabindex="-1"></a>             ),</span>
+<span id="cb1-308"><a href="#cb1-308" aria-hidden="true" tabindex="-1"></a><span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb1-309"><a href="#cb1-309" aria-hidden="true" tabindex="-1"></a>testlosscomp <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">tau =</span> taus,</span>
+<span id="cb1-310"><a href="#cb1-310" aria-hidden="true" tabindex="-1"></a>                           <span class="at">baseline =</span> coverages<span class="sc">$</span>emp_cov,</span>
+<span id="cb1-311"><a href="#cb1-311" aria-hidden="true" tabindex="-1"></a>                           <span class="at">nonlinear =</span> nonlin_test_table<span class="sc">$</span>emp_cov,</span>
+<span id="cb1-312"><a href="#cb1-312" aria-hidden="true" tabindex="-1"></a>                           <span class="at">ridge =</span> ridgeeval<span class="sc">$</span>emp_cov)</span>
+<span id="cb1-313"><a href="#cb1-313" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-314"><a href="#cb1-314" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(testlosscomp,</span>
+<span id="cb1-315"><a href="#cb1-315" aria-hidden="true" tabindex="-1"></a>             <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"$</span><span class="sc">\\</span><span class="st">tau$"</span>,</span>
+<span id="cb1-316"><a href="#cb1-316" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">widehat C_{</span><span class="sc">\\</span><span class="st">tau}^{(0)}$"</span>,</span>
+<span id="cb1-317"><a href="#cb1-317" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">widehat C_{</span><span class="sc">\\</span><span class="st">tau}^{(1)}$"</span>,</span>
+<span id="cb1-318"><a href="#cb1-318" aria-hidden="true" tabindex="-1"></a>               <span class="st">"$</span><span class="sc">\\</span><span class="st">widehat C_{</span><span class="sc">\\</span><span class="st">tau}^{</span><span class="sc">\\</span><span class="st">mathrm{ridge}}$"</span></span>
+<span id="cb1-319"><a href="#cb1-319" aria-hidden="true" tabindex="-1"></a>             ),</span>
+<span id="cb1-320"><a href="#cb1-320" aria-hidden="true" tabindex="-1"></a>             <span class="at">digits =</span> <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
