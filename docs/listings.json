@@ -2,6 +2,8 @@
   {
     "listing": "/projects.html",
     "items": [
+      "/projects/csmlexam-mcmc.html",
+      "/projects/csmlexam-reg.html",
       "/projects/thesis.html",
       "/projects/dssi.html",
       "/projects/SLMFinal.html",

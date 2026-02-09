@@ -7,6 +7,18 @@ bibliography: "ref.bib"
 abstract: "In this report, I build MCMC samplers to approximate a multimodal density. I use a simple Random Walk Metropolis-Hastings (RWMH) algorithm, a variable-transformed RWMH algorithm, and a parallel tempering algorithm. The efficacy of each method is compared, and the samplers are used to generate confidence intervals for the expectation of a random variable with the given density."
 ---
 
+```{r setup, include = FALSE, tidy=TRUE}
+# Document setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  dev = "ragg_png"
+)
+library(tidyverse)
+library(kableExtra)
+```
+
 Let $f(x) = k(\exp[-3(x-2)]+\exp[-(x-30)^2]+\exp[-(x-20)^2/0.01])\mathbf{1}_{\{x\geq 2\}}$ be the target density with normalising constant $k >0$ and support $x\geq 2$.
 
 ## Random Walk Metropolis-Hastings
@@ -420,3 +432,8 @@ a1 / a2 / a3
 ```
 
 The plots in @fig-confints are somewhat dependent on seed, but their behaviour is generalisable. The RWMH algorithm only consistently approaches the true value of $\mathbb E(X)$ for large $n$, either over- or under-estimating this value beforehand. The variable-transformed and parallel tempering algorithms both converge near the true value of $\mathbb E (X)$ for smaller $n$. Between the latter two, the variable-transformed algorithm tends to converge faster than parallel tempering, but has wider confidence intervals. The parallel tempering has the smallest confidence intervals, but these do not always include the true value of $\mathbb E(X)$. Thus, for confidence intervals, I would choose the variable-transformed algorithm over the other two. 
+
+## Code Appendix {#sec-code}
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
