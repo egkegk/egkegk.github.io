@@ -196,24 +196,24 @@ This algorithm will allow the chains to explore the distribution widely, while c
 **Algorithm 1: Parallel Tempering Algorithm**
 
 <table style="border: none; width: 100%;">
-<tr><td style="border: none;">**Procedure** ParallelTempering($$n, \mathbf{T}, \boldsymbol{\sigma}^{2}, \mathbf{X_0}$$)</td></tr>
-<tr><td style="border: none; padding-left: 20px;">**for** $$i = 1, 2, \dots, n$$ **do**</td></tr>
+<tr><td style="border: none;">**Procedure** ParallelTempering($n, \mathbf{T}, \boldsymbol{\sigma}^{2}, \mathbf{X_0}$)</td></tr>
+<tr><td style="border: none; padding-left: 20px;">**for** $i = 1, 2, \dots, n$ **do**</td></tr>
 <tr><td style="border: none; padding-left: 40px;">**Procedure** X-Step()</td></tr>
-<tr><td style="border: none; padding-left: 60px;">**for** $$j = 1, 2, \dots, M$$ **do**</td></tr>
-<tr><td style="border: none; padding-left: 80px;">generate $$Y \sim N(X_{i-1, j}, \sigma_{j}^2)$$</td></tr>
-<tr><td style="border: none; padding-left: 80px;">generate $$u \sim U([0,1])$$</td></tr>
-<tr><td style="border: none; padding-left: 80px;">**if** $$u \leq \left(\frac{f(Y)}{f(X_{i-1,j})}\right)^{\frac{1}{T_j}}$$ **then**</td></tr>
-<tr><td style="border: none; padding-left: 100px;">$$X_{i,j} = Y$$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**for** $j = 1, 2, \dots, M$ **do**</td></tr>
+<tr><td style="border: none; padding-left: 80px;">generate $Y \sim N(X_{i-1, j}, \sigma_{j}^2)$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">generate $u \sim U([0,1])$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">**if** $u \leq \left(\frac{f(Y)}{f(X_{i-1,j})}\right)^{\frac{1}{T_j}}$ **then**</td></tr>
+<tr><td style="border: none; padding-left: 100px;">$X_{i,j} = Y$</td></tr>
 <tr><td style="border: none; padding-left: 80px;">**else**</td></tr>
-<tr><td style="border: none; padding-left: 100px;">$$X_{i,j} = X_{i-1,j}$$</td></tr>
+<tr><td style="border: none; padding-left: 100px;">$X_{i,j} = X_{i-1,j}$</td></tr>
 <tr><td style="border: none; padding-left: 80px;">**end if**</td></tr>
 <tr><td style="border: none; padding-left: 60px;">**end for**</td></tr>
 <tr><td style="border: none; padding-left: 40px;">**end procedure**</td></tr>
 <tr><td style="border: none; padding-left: 40px;">**Procedure** Swap()</td></tr>
-<tr><td style="border: none; padding-left: 60px;">generate $$m =$$ random integer on $$[1, M - 1]$$</td></tr>
-<tr><td style="border: none; padding-left: 60px;">generate $$u' \sim U([0,1])$$</td></tr>
-<tr><td style="border: none; padding-left: 60px;">**if** $$u' \leq \frac{f(X_{i,m})^{1/T_{m+1}}f(X_{i,m+1})^{1/T_{m}}}{f(X_{i,m})^{1/T_m}f(X_{i,m+1})^{1/T_{m+1}}}$$ **then**</td></tr>
-<tr><td style="border: none; padding-left: 80px;">exchange $$X_{i,m}$$ and $$X_{i,m+1}$$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">generate $m =$ random integer on $[1, M - 1]$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">generate $u' \sim U([0,1])$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**if** $u' \leq \frac{f(X_{i,m})^{1/T_{m+1}}f(X_{i,m+1})^{1/T_{m}}}{f(X_{i,m})^{1/T_m}f(X_{i,m+1})^{1/T_{m+1}}}$ **then**</td></tr>
+<tr><td style="border: none; padding-left: 80px;">exchange $X_{i,m}$ and $X_{i,m+1}$</td></tr>
 <tr><td style="border: none; padding-left: 60px;">**end if**</td></tr>
 <tr><td style="border: none; padding-left: 40px;">**end procedure**</td></tr>
 <tr><td style="border: none; padding-left: 20px;">**end for**</td></tr>
