@@ -2,7 +2,9 @@
 title: "MCMC Sampling from a Multimodal Density"
 author: "Emrys King"
 date: "2025-12-12"
-format: html
+format: 
+    html:
+        toc: true
 bibliography: "ref.bib"
 abstract: "In this report, I build MCMC samplers to approximate a multimodal density. I use a simple Random Walk Metropolis-Hastings (RWMH) algorithm, a variable-transformed RWMH algorithm, and a parallel tempering algorithm. The efficacy of each method is compared, and the samplers are used to generate confidence intervals for the expectation of a random variable with the given density."
 ---
@@ -188,38 +190,38 @@ We will now use a parallel tempering algorithm to sample from $f$. The algorithm
 
 This algorithm will allow the chains to explore the distribution widely, while constraining the variance of the true sampling chain $T_1$ to $0.5$, greatly speeding up the mixing of the sampler. We see in @fig-q1c-traceplot that this increase in mixing quality does not come at the expense of convergence: the sampler is exploring the distribution fully and correctly.
 
-```pseudocode
-#| label: alg-parallel
-#| pdf-line-number: true
+::: {#alg-parallel}
+<div style="border: 1px solid #333; padding: 15px; background-color: #f9f9f9; font-family: monospace;">
 
-\begin{algorithm}
-  \caption{Parallel Tempering Algorithm}
-  \begin{algorithmic}
-    \Procedure{ParallelTempering}{$n, \mathbf{T}, \sigma^{\mathbf{2}}, \mathbf{X_0}$}
-      \For{$i = 1, 2, \dots, n$}
-        \Procedure{X-Step}{}
-          \For{$j = 1,2,\dots,M$}
-            \State generate $Y \sim N(X_{i-1, j}, \sigma_{j}^2)$
-            \State generate $u \sim U([0,1])$
-            \If{$u \leq \left(\frac{f(Y)}{f(X_{i-1,j})}\right)^{\frac{1}{T_j}}}$
-              \State $X_{i,j} = Y$
-            \Else
-              \State $X_{i,j} = X_{i-1,j}$
-            \EndIf
-          \EndFor
-        \EndProcedure
-        \Procedure{Swap}{}
-          \State generate $m=$ random integer on the interval $[1, M - 1]$
-          \State generate $u'\sim U([0,1])$
-          \If{$u \leq \frac{f(X_{i,m})^{1/T_{m+1}}f(X_{i,m+1})^{1/T_{m}}}{f(X_{i,m})^{1/T_m}f(X_{i,m+1})^{1/T_{m+1}}}$}
-            \State exchange $X_{i,m}$ and $X_{i,m+1}$
-          \EndIf
-        \EndProcedure
-      \EndFor
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-```
+**Algorithm 1: Parallel Tempering Algorithm**
+
+<table style="border: none; width: 100%;">
+<tr><td style="border: none;">**Procedure** ParallelTempering($$n, \mathbf{T}, \boldsymbol{\sigma}^{2}, \mathbf{X_0}$$)</td></tr>
+<tr><td style="border: none; padding-left: 20px;">**for** $$i = 1, 2, \dots, n$$ **do**</td></tr>
+<tr><td style="border: none; padding-left: 40px;">**Procedure** X-Step()</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**for** $$j = 1, 2, \dots, M$$ **do**</td></tr>
+<tr><td style="border: none; padding-left: 80px;">generate $$Y \sim N(X_{i-1, j}, \sigma_{j}^2)$$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">generate $$u \sim U([0,1])$$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">**if** $$u \leq \left(\frac{f(Y)}{f(X_{i-1,j})}\right)^{\frac{1}{T_j}}$$ **then**</td></tr>
+<tr><td style="border: none; padding-left: 100px;">$$X_{i,j} = Y$$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">**else**</td></tr>
+<tr><td style="border: none; padding-left: 100px;">$$X_{i,j} = X_{i-1,j}$$</td></tr>
+<tr><td style="border: none; padding-left: 80px;">**end if**</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**end for**</td></tr>
+<tr><td style="border: none; padding-left: 40px;">**end procedure**</td></tr>
+<tr><td style="border: none; padding-left: 40px;">**Procedure** Swap()</td></tr>
+<tr><td style="border: none; padding-left: 60px;">generate $$m =$$ random integer on $$[1, M - 1]$$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">generate $$u' \sim U([0,1])$$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**if** $$u' \leq \frac{f(X_{i,m})^{1/T_{m+1}}f(X_{i,m+1})^{1/T_{m}}}{f(X_{i,m})^{1/T_m}f(X_{i,m+1})^{1/T_{m+1}}}$$ **then**</td></tr>
+<tr><td style="border: none; padding-left: 80px;">exchange $$X_{i,m}$$ and $$X_{i,m+1}$$</td></tr>
+<tr><td style="border: none; padding-left: 60px;">**end if**</td></tr>
+<tr><td style="border: none; padding-left: 40px;">**end procedure**</td></tr>
+<tr><td style="border: none; padding-left: 20px;">**end for**</td></tr>
+<tr><td style="border: none;">**end procedure**</td></tr>
+</table>
+
+</div>
+:::
 
 ```{r}
 # part (c)
