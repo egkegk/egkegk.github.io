@@ -1,0 +1,510 @@
+---
+title: "Linear and Nonlinear Models with a Quantile Loss Function"
+author: "Emrys King"
+date: "2025-12-12"
+format: html
+bibliography: "ref.bib"
+abstract: "In this report, I implement linear and nonlinear models trained on
+            the Boston dataset from the MASS package, optimized over
+            a quantile loss function. The efficacy of each mode, as well as
+            possible methods for optimizing the models that are commensurate
+            with theoretical quantiles, are discussed."
+---
+
+```{r setup, include = FALSE, tidy=TRUE}
+# Document setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  dev = "ragg_png"
+)
+library(tidyverse)
+library(kableExtra)
+```
+
+## Introduction {#sec-int}
+
+Let $\ell$ be the asymmetric quantile loss function defined by
+$$
+\ell_{\tau}(y,q) = \begin{cases}
+  \tau(y-q) & y > q \\
+  (\tau-1)(y-q) & y \leq q
+\end{cases}
+$$
+where $\tau\in (0,1)$ is the quantile level. Let $R_\tau (q;x) = \mathbb{E}[\ell_\tau(Y,q)\mid X=x]$ denote the conditional risk and note that $q^*_\tau :=\arg\min_qR_\tau(q;x)$ is the conditional $\tau$-quantile of $Y\mid X=x$.
+
+```{r}
+# Question 2
+set.seed(4747)
+data("Boston", package="MASS")
+model_data <- subset(Boston, select = c("medv", "lstat", "rm"))
+train_size <- floor(0.7 * nrow(Boston))
+idx <- sample(1:nrow(Boston), train_size)
+boston_train <- model_data[idx,]
+boston_test <- model_data[-idx,]
+```
+
+Throughout this analysis, I will be using the `Boston` dataset from the `MASS` package, modelling response `medv` (median house price in \$1000s) by predictors `lstat` (percent lower status of the population) and `rm` (average number of rooms per dwelling). The data ($n=506$) has been randomly split into a training set ($n_{\textrm{train}}=354$) and a testing set ($n_{\textrm{test}}=152$) prior to any analysis.
+
+## Linear Models for Varying Quantiles {#sec-lin}
+
+I implemented the loss function and its empirical mean as `loss()` and `empirical_loss()`, which can be found in @sec-code. Let us now consider the baseline linear model given by
+$$
+f^{(0)}_\tau(x) = \beta_{0,\tau}^{(0)} + \beta_{1,\tau}^{(0)}\texttt{lstat} + \beta_{2,\tau}^{(0)}\texttt{rm}
+$$
+
+```{r}
+# part (a)
+loss <- function(tau,y,q){
+  ans <- ifelse(y > q, tau*(y-q), (tau-1)*(y-q))
+  return(ans)
+}
+
+empirical_loss <- function(coefs, data, quantile){
+  beta0 <- coefs[1]
+  beta1 <- coefs[2]
+  beta2 <- coefs[3]
+  
+  q <- beta0 + beta1 * data$lstat + beta2 * data$rm
+  mean(loss(quantile, data$medv, q))
+}
+```
+
+I used the `optim` function to minimise $\ell_\tau(y,f^{(0)}_\tau(x))$ over the training dataset for each $\tau \in \{0.1,0.5,0.9\}$. Specifically, I used the Nelder-Mead method, considered to be robust (as it does not require gradients) while at times slow. In this scenario, where the training set is small, I am not particularly worried about relative slowness, since all processes will be quick; I thus prioritised the robustness of Nelder-Mead. Since Nelder-Mead can be sensitive to its starting values, I began the optimisation algorithm at $(\beta_{0,\tau},\beta_{1,\tau},\beta_{2,\tau})=(\bar y, 0, 0)$, where $y=\texttt{medv}$ and thus $\bar y$ is the sample mean of `medv`. These starting parameters represent the typical null hypothesis of linear modelling, in which the predictors (here, `lstat` and `rm`) have no influence on the response (here, `medv`), and so the best linear model is simply a horizontal line at the sample mean of the response. After running the `optim` for each value of $\tau\in\{0.1,0.5,0.9\}$, we find the coefficients presented in @tbl-baselinecoefs. 
+
+```{r}
+#| label: tbl-baselinecoefs
+#| tbl-cap: |
+#|    The estimated coefficients $\hat\beta_{i,\tau}^{(0)}$ that minimise
+#|    the empirical loss over the training set.
+
+# bullet 1
+taus <- c(0.1, 0.5, 0.9)
+coefs_init <- c(mean(boston_train$medv), 0, 0)
+opt_res <- lapply(taus,
+                  function(tau){optim(par = coefs_init,
+                                      fn = empirical_loss,
+                                      data = boston_train,
+                                      quantile = tau,
+                                      method = "Nelder-Mead")
+                    })
+opt_res_table <- data.frame(tau = taus,
+                            beta0 = sapply(1:3,
+                                           function(i) opt_res[[i]]$par[[1]]),
+                            beta1 = sapply(1:3,
+                                           function(i) opt_res[[i]]$par[[2]]),
+                            beta2 = sapply(1:3,
+                                           function(i) opt_res[[i]]$par[[3]]))
+knitr::kable(opt_res_table,
+             col.names = c("$\\tau$",
+                           "$\\hat \\beta_{0,\\tau}^{(0)}$",
+                           "$\\hat \\beta_{1,\\tau}^{(0)}$",
+                           "$\\hat \\beta_{2,\\tau}^{(0)}$"),
+             digits = 3)
+```
+
+To evaluate the linear models' performance, we would like a characterisation of the empirical loss against the test data. This can be done by calculating the empirical risk, $\hat R_{\tau}(f_\tau^{(0)};x_\mathrm{test})$, which is simply the mean loss of the models under the test data. We can compare this to the empirical risk against the training data to get a sense of over/underfitting. The results of this calculation are shown in @tbl-baselineloss. The values are not sufficiently different to cause concern.
+
+```{r}
+#| label: tbl-baselineloss
+#| tbl-cap: |
+#|    The mean empirical loss (i.e., the empirical risk) of the linear
+#|    model over the test dataset for $\tau \in \{0.1,0.5,0.9\}$.
+
+# bullet 2
+opt_res_test <- data.frame(
+  tau = taus,
+  emp_loss_train = sapply(1:3, function(i){
+    model_coefs <- opt_res[[i]]$par
+    empirical_loss(model_coefs, boston_train, taus[[i]])
+}),
+  emp_loss_test = sapply(1:3, function(i){
+    model_coefs <- opt_res[[i]]$par
+    empirical_loss(model_coefs, boston_test, taus[[i]])
+}))
+
+knitr::kable(opt_res_test,
+             col.names = c("$\\tau$",
+             "$\\hat R_{\\tau}(f_{\\tau}^{(0)};x_{\\mathrm{train}})$",
+             "$\\hat R_{\\tau}(f_{\\tau}^{(0)};x_{\\mathrm{test}})$"),
+             digits = 3)
+```
+
+Finally, we would like to gather an impression the accuracy of the quantile calculation in this model. Let
+$$
+\hat C_\tau^{(0)}=\frac{1}{n_\mathrm{test}}\sum_{i\in\mathrm{test}}\mathbf{1}_{\left\{Y_i\leq f_\tau^{(0)}(X_i)\right\}}
+$$
+denote the empirical coverage, which measures the proportion of test responses which lie below the $\tau$-quantile. For well-calibrated models, $\hat C_\tau^{(0)}\approx \tau$. Thus, we can evaluate the calibration of the baseline linear models by calculating their empirical coverages, which can be found in @tbl-baselinecover. Since these values are each near the true (respective) value of $\tau$, it is clear that the model is well-calibrated.
+```{r}
+#| label: tbl-baselinecover
+#| tbl-cap: |
+#|    The empirical coverage of the linear model for $\tau\in\{0.1,0.5,0.9\}$.
+
+empirical_coverage <- function(coefs, data){
+  beta0 <- coefs[1]
+  beta1 <- coefs[2]
+  beta2 <- coefs[3]
+  
+  q <- beta0 + beta1 * data$lstat + beta2 * data$rm
+  y <- data$medv
+  mean(sapply(1:length(y), function(i) y[[i]] <= q[[i]]))
+}
+
+coverages <- data.frame(
+  tau = taus,
+  emp_cov = sapply(1:3, function(i){
+    model_coefs <- opt_res[[i]]$par
+    empirical_coverage(model_coefs, boston_test)
+}))
+
+knitr::kable(coverages,
+             col.names = c("$\\tau$",
+                           "$\\hat C_{\\tau}^{(0)}$"),
+             digits = 3)
+```
+
+
+## Nonlinear Models for Varying Quantiles {#sec-nonlin}
+
+Now, let us consider the following nonlinear model:
+$$
+f_\tau^{(1)}(x) = \beta_{0,\tau}^{(1)} + \beta_{1,\tau}^{(1)}\texttt{lstat} + \beta_{2,\tau}^{(1)}\texttt{rm} + \beta_{3,\tau}^{(1)}\texttt{lstat}^2 + \beta_{4,\tau}^{(1)}\texttt{rm}^2 + \beta_{5,\tau}^{(1)}\texttt{lstat}\times\texttt{rm}
+$$
+Similarly to the linear models, I use `optim` with Nelder-Mead and starting values $(\beta_{0,\tau}^{(1)},\beta_{1,\tau}^{(1)},\beta_{2,\tau}^{(1)}, \beta_{3,\tau}^{(1)},\beta_{4,\tau}^{(1)}, \beta_{5,\tau}^{(1)})$ $=(\bar y, 0, 0,0,0,0)$ to minimise the average empirical loss (or, empirical risk) over the training dataset. The optimised coefficients are presented in @tbl-nonlincoefs.
+```{r}
+#| label: tbl-nonlincoefs
+#| tbl-cap: |
+#|    The coefficient estimates of the nonlinear model that minimise the average
+#|    empirical loss over the training data, for $\tau\in\{0.1,0.5,0.9\}$.
+
+nonlinear_model_data <- model_data %>%
+  mutate(lstatsq = I(lstat^2),
+         rmsq = I(rm^2),
+         lstatrm = I(lstat*rm))
+
+nonlin_train <- nonlinear_model_data[idx,]
+nonlin_test <- nonlinear_model_data[-idx,]
+
+nonlin_emp_loss <- function(coefs, data, quantile){
+  beta0 <- coefs[1]
+  beta1 <- coefs[2]
+  beta2 <- coefs[3]
+  beta3 <- coefs[4]
+  beta4 <- coefs[5]
+  beta5 <- coefs[6]
+  
+  q <- beta0 + beta1 * data$lstat + beta2 * data$rm + beta3 * data$lstatsq +
+    beta4 * data$rmsq + beta5 * data$lstatrm
+  mean(loss(quantile, data$medv, q))
+}
+  
+
+coefs_init <- c(mean(nonlin_train$medv),0,0,0,0,0)
+nonlin_opt <- lapply(taus,
+                  function(tau){optim(par = coefs_init,
+                                      fn = nonlin_emp_loss,
+                                      data = nonlin_train,
+                                      quantile = tau,
+                                      method = "Nelder-Mead")
+                    })
+
+nonlin_table <- data.frame(tau = taus,
+                           beta0 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[1]]),
+                           beta1 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[2]]),
+                           beta2 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[3]]),
+                           beta3 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[4]]),
+                           beta4 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[5]]),
+                           beta5 = sapply(1:3,
+                                          function(i) nonlin_opt[[i]]$par[[6]]))
+
+knitr::kable(nonlin_table,
+             col.names = c("$\\tau$",
+                           "$\\hat \\beta_{0,\\tau}^{(1)}$",
+                           "$\\hat \\beta_{1,\\tau}^{(1)}$",
+                           "$\\hat \\beta_{2,\\tau}^{(1)}$",
+                           "$\\hat \\beta_{3,\\tau}^{(1)}$",
+                           "$\\hat \\beta_{4,\\tau}^{(1)}$",
+                           "$\\hat \\beta_{5,\\tau}^{(1)}$"),
+             digits = 3)
+```
+Now, to evaluate this model, we look again at the average empirical loss and the empirical coverage on the test data. These calculations are included in @tbl-nonlineval. The empirical risk does not change drastically between training and testing for any $\tau$, meaning that overfitting has been avoided. Furthermore, the empirical coverage is near the true value of $\tau$ for all $\tau$, indicating the model is well-calibrated. 
+
+```{r}
+#| label: tbl-nonlineval
+#| tbl-cap: |
+#|    The empirical risk (for training and testing data) and coverage of the
+#|    nonlinear model for $\tau\in\{0.1,0.5,0.9\}$.
+
+nonlin_cover <- function(coefs, data){
+  beta0 <- coefs[1]
+  beta1 <- coefs[2]
+  beta2 <- coefs[3]
+  beta3 <- coefs[4]
+  beta4 <- coefs[5]
+  beta5 <- coefs[6]
+  
+  q <- beta0 + beta1 * data$lstat + beta2 * data$rm + beta3 * data$lstatsq +
+    beta4 * data$rmsq + beta5 * data$lstatrm
+  y <- data$medv
+  mean(sapply(1:length(y), function(i) y[[i]] <= q[[i]]))
+}
+
+nonlin_test_table <- data.frame(
+  tau = taus,
+  train_loss = sapply(1:3, function(i){
+    model_coefs <- nonlin_opt[[i]]$par
+    nonlin_emp_loss(model_coefs, nonlin_train, taus[[i]])}),
+  test_loss = sapply(1:3, function(i){
+    model_coefs <- nonlin_opt[[i]]$par
+    nonlin_emp_loss(model_coefs, nonlin_test, taus[[i]])}),
+  emp_cov = sapply(1:3, function(i){
+    model_coefs <- nonlin_opt[[i]]$par
+    nonlin_cover(model_coefs, nonlin_test)
+}))
+
+knitr::kable(nonlin_test_table,
+             col.names = c(
+               "$\\tau$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(1)};X_{\\textrm{train}})$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(1)};X_{\\textrm{test}})$",
+               "$\\hat C_{\\tau}^{(1)}$"),
+             digits = 3)
+```
+
+
+## Ridge Regression for Varying Quantiles {#sec-ridge}
+
+Now, I implement a ridge regression model. This model penalises large coefficients in order to reduce model complexity. In particular, the coefficients solve the following equation:
+$$
+\hat \beta_{\tau,\lambda}^{\textrm{ridge}}= \arg\min_{\beta}\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta)
+$$
+where $\beta$ is a vector of coefficients  and $\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta)$ is the ridge-penalised empirical risk given by
+$$
+\widehat R_{\tau, \lambda}^\mathrm{ridge}(\beta) = \frac{1}{n_\mathrm{train}}\sum_{i\in\mathrm{train}}\ell_\tau(Y_i, f_\tau^{(1)}(X_i;\beta)) + \lambda\|\beta\|^2_2.
+$$
+where $\lambda > 0$ is meant to regularise the coefficients and $\|\cdot\|_2$ denotes the $\ell_2$ norm. In other words, we are now optimising $\beta$ over the mean loss (the same as in the previous sections) summed with a penalisation term, $\lambda\|\beta\|^2$. 
+
+Setting an appropriate value of $\lambda$ takes some fine-tuning. Thus, I implement a $k$-fold cross-validation algorithm to select an optimal $\lambda\in[10^{-4},10^{-1}]$ for each $\tau$. Using $k=5$ folds on each candidate value of $\lambda$, I iteratively fit the ridge-penalised model over the training data, minimising the ridge-penalised empirical risk using `optim` as described in previous sections. I then selected the value of $\lambda$ that minimised the mean risk over all $k$-folds, and refit the model using this value of $\lambda$. The coefficients for the ridge-penalised model (at each value of $\tau$) may be found in @tbl-ridgecoefs, along with the $\lambda$ selected through cross-validation. For each $\tau$, the $\lambda$ selected is the left endpoint of the candidate region, $10^{-4}$. This means the penalisation for larger coefficients in model is very small, and thus the ridge-penalisation does not cause a major difference in the fit compared to the nonlinear model from @sec-nonlin.
+
+```{r}
+#| label: tbl-ridgecoefs
+#| tbl-cap: |
+#|     The $\lambda$ selected for each value of $\tau$ using $k$-fold
+#|     cross-validation, and the coefficient estimates for the corresponding
+#|     ridge-penalised nonlinear model.
+
+# defining ridge regression risk estimator
+ridge_risk <- function(coefs, data, tau, lambda){
+  beta0 <- coefs[1]
+  beta1 <- coefs[2]
+  beta2 <- coefs[3]
+  beta3 <- coefs[4]
+  beta4 <- coefs[5]
+  beta5 <- coefs[6]
+  
+  q <- beta0 + beta1 * data$lstat + beta2 * data$rm + beta3 * data$lstatsq +
+    beta4 * data$rmsq + beta5 * data$lstatrm
+  mean_loss <- mean(loss(tau, data$medv, q))
+  penalisation <- lambda * sum(coefs^2)
+  mean_loss + penalisation
+}
+
+# k-fold cross-validation for lambdas
+kfold_cv <- function(kfold, candidates, tau){
+  fold <- sample(rep(1:kfold, length.out = train_size))
+  cv_risk <- numeric(length(candidates))
+  
+  for (lambda in candidates){
+    errs <- numeric(kfold)
+    for (j in 1:kfold) {
+      tr <- fold != j
+      va <- fold == j
+
+      # build training and validation data frames with consistent variable names
+      df_tr <- nonlin_train[tr,]
+      df_va <- nonlin_train[va,]
+
+      # fit model using consistent variable names
+      fit <- optim(par = coefs_init,
+                 fn = ridge_risk,
+                 data = df_tr,
+                 tau = tau,
+                 lambda = lambda,
+                 method = "Nelder-Mead")
+
+      # predict using consistent names
+      errs[j] <- ridge_risk(fit$par, df_va, tau, lambda) ## NEW RISK HERE
+    }
+  cv_risk[lambda] <- mean(errs)
+  }
+  best_lambda <- candidates[which.min(cv_risk)]
+  best_fit <- optim(par = coefs_init,
+                 fn = ridge_risk,
+                 data = nonlin_train,
+                 tau = tau,
+                 lambda = best_lambda,
+                 method = "Nelder-Mead")
+  return(c(best_lambda, best_fit))
+}
+
+lambdas <- seq(1e-4, 1e-1, length.out = 100)
+ridge_results <- lapply(taus,
+                        function(tau) kfold_cv(5, lambdas, tau))
+
+options(scipen = 999)
+ridge_table <- data.frame(tau = taus,
+             lambda = sapply(1:3,
+                             function(i) ridge_results[[i]][[1]]),
+             beta0 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[1]]),
+             beta1 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[2]]),
+             beta2 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[3]]),
+             beta3 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[4]]),
+             beta4 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[5]]),
+             beta5 = sapply(1:3,
+                            function(i) ridge_results[[i]]$par[[6]]))
+
+knitr::kable(ridge_table,
+             col.names = c("$\\tau$",
+                           "$\\lambda_{\\textrm{min}}$",
+       "$\\hat \\beta_{0;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$",
+       "$\\hat \\beta_{1;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$",
+       "$\\hat \\beta_{2;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$",
+       "$\\hat \\beta_{3;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$",
+       "$\\hat \\beta_{4;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$",
+       "$\\hat \\beta_{5;\\tau,\\lambda_{\\textrm{min}}}^{\\textrm{ridge}}$"),
+       digits = 4)
+```
+
+The average empirical test loss, average empirical training loss, and the empirical coverage of the ridge-penalised model are included in @tbl-ridgeeval. Once again, there appears to be no overfitting, and the empirical coverages approximate the true values of $\tau$.
+
+```{r}
+#| label: tbl-ridgeeval
+#| tbl-cap: |
+#|    The empirical risk (for training and testing data) and coverage of the
+#|    ridge-penalised model for $\tau\in\{0.1,0.5,0.9\}$.
+
+ridgeeval <- data.frame(tau = taus,
+                        testloss = sapply(1:3, function(i){
+                        model_coefs <- ridge_results[[i]]$par
+                        ridge_risk(model_coefs, nonlin_test, taus[[i]],
+                                   lambda = 1e-4)}),
+                        trainloss = sapply(1:3, function(i){
+                        model_coefs <- ridge_results[[i]]$par
+                        ridge_risk(model_coefs, nonlin_train, taus[[i]],
+                                   lambda = 1e-4)}),
+                        emp_cov = sapply(1:3, function(i){
+                        model_coefs <- ridge_results[[i]]$par
+                        nonlin_cover(model_coefs, nonlin_test)}))
+
+knitr::kable(ridgeeval,
+             col.names = c("$\\tau$",
+"$\\widehat R_{\\tau,\\lambda}^{\\mathrm{ridge}}(\\hat\\beta_{\\tau,\\lambda_\\mathrm{min}};x_{\\mathrm{test}})$",
+"$\\widehat R_{\\tau,\\lambda}^{\\mathrm{ridge}}(\\hat\\beta_{\\tau,\\lambda_\\mathrm{min}};x_{\\mathrm{train}})$",
+"$\\widehat C_{\\tau}^{\\mathrm{ridge}}$"),
+digits = 3)
+```
+
+
+## Comparison
+
+In this section, I compare the three models constructed above with regards to coeﬃcient magnitudes, test loss, overfitting and empirical coverage.
+
+The coefficients for the linear, nonlinear, and ridge-penalised models are available in @tbl-baselinecoefs, @tbl-nonlincoefs, and @tbl-ridgecoefs, respectively. For each of these models, the actual coefficient values can be sensitive to the seed used to randomly split the full dataset into training and testing datasets. This is most pertinent with regards to the constant term, $\hat\beta_{0,\tau}$, which can have very different magnitudes depending on what observations are used to train the model; however, while $\hat\beta_{0,\tau}^{(0)}$ can be negative depending on training data and quantile level, the nonlinear model and ridge-penalised model tend to produce positive constant terms. These latter estimates are potentially more realistic, as a negative median house value is illogical. Beyond the constant term, some general observations can be made on coefficient magnitude regardless of training data. The baseline linear model typically has much larger non-constant coefficients compared to the nonlinear and ridge-penalised models. As discussed in @sec-ridge, the small value of $\lambda$ in the ridge-penalised model indicates that a ridge regularisation did not largely improve the nonlinear model fit, and thus there does not tend to be a major difference between these two models' coefficients.
+
+The average empirical test loss of each model is compared in @tbl-testlosscomp. Some of these values are repeated from @tbl-baselineloss, @tbl-nonlineval, and @tbl-ridgeeval for ease of comparison. Though the precise values are sensitive to the randomised testing/training split, the risk tends to decrease from the baseline to the nonlinear model, especially for larger values of $\tau$. The ridge penalisation does not greatly affect the empirical risk positively, and in some cases the empirical risk actually increases with the addition of the risk penalisation.
+
+```{r}
+#| label: tbl-testlosscomp
+#| tbl-cap: | 
+#|    Comparison of average empirical loss of each model on the testing dataset.
+
+testlosscomp <- data.frame(tau = taus,
+                           baseline = opt_res_test$emp_loss_test,
+                           nonlinear = nonlin_test_table$test_loss,
+                           ridge = ridgeeval$testloss)
+
+knitr::kable(testlosscomp,
+             col.names = c("$\\tau$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(0)};x_{\\mathrm{test}})$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(1)};x_{\\mathrm{test}})$",
+"$\\widehat R_{\\tau,\\lambda}^{\\mathrm{ridge}}(\\hat\\beta_{\\tau,\\lambda_\\mathrm{min}};x_{\\mathrm{test}})$"
+             ),
+digits = 3)
+```
+
+To evaluate overfitting, we can compare the average empirical loss over the training set with that over the testing set. Thus, I include the average empirical training loss in @tbl-trainlosscomp. Once again, some of these values are repeated from other tables. For each model, there is not a great change in values between @tbl-trainlosscomp and @tbl-testlosscomp. This indicates that no overfitting is occurring, as the models are robust enough to evaluate unseen data with the same level of accuracy as the data they were trained on.
+
+```{r}
+#| label: tbl-trainlosscomp
+#| tbl-cap: | 
+#|    Comparison of average empirical loss of each model on the training dataset.
+
+testlosscomp <- data.frame(tau = taus,
+                           baseline = opt_res_test$emp_loss_train,
+                           nonlinear = nonlin_test_table$train_loss,
+                           ridge = ridgeeval$trainloss)
+
+knitr::kable(testlosscomp,
+             col.names = c("$\\tau$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(0)};x_{\\mathrm{train}})$",
+               "$\\hat R_{\\tau}(f_{\\tau}^{(1)};x_{\\mathrm{train}})$",
+"$\\widehat R_{\\tau,\\lambda}^{\\mathrm{ridge}}(\\hat\\beta_{\\tau,\\lambda_\\mathrm{min}};x_{\\mathrm{train}})$"
+             ),
+digits = 3)
+```
+
+Finally, we evaluate the empirical coverage of each model for each value of $\tau$. The coverage values are included in @tbl-covcomp. The ridge-penalised model tends to have empirical coverage nearest the true value of $\tau$, but all models are well-calibrated and thus have empirical coverage approximately equal to $\tau$.
+
+```{r}
+#| label: tbl-covcomp
+#| tbl-cap: | 
+#|    Comparison of empirical coverage of each model.
+
+testlosscomp <- data.frame(tau = taus,
+                           baseline = coverages$emp_cov,
+                           nonlinear = nonlin_test_table$emp_cov,
+                           ridge = ridgeeval$emp_cov)
+
+knitr::kable(testlosscomp,
+             col.names = c("$\\tau$",
+               "$\\widehat C_{\\tau}^{(0)}$",
+               "$\\widehat C_{\\tau}^{(1)}$",
+               "$\\widehat C_{\\tau}^{\\mathrm{ridge}}$"
+             ),
+             digits = 3)
+```
+
+Overall, if I had to pick only one model to use, I would choose the nonlinear model, $f_\tau^{(1)}$. This model had better performance than the linear model, and the slightly better performance of the ridge-penalised model in some cases is not necessarily worth the added computational complexity necessary of the latter.
+
+## Theoretical Guarantees of Quantiles
+
+The theoretical (true) quantiles, $q_\tau(x)$, never cross, meaning $q_\tau(x)<q_{\tau'}(x)$ for all $x$ so long as $\tau,\tau'\in(0,1)$ and $\tau < \tau'$. However, this does not necessarily occur in the quantile regression implemented in this question thus far. The average empirical loss is only minimised for a single value of $\tau$. Thus, in its current state, the model has no way of minimising with regard to other quantiles, let alone minimising to ensure that quantile estimates never cross.
+
+In order to train a model on each $\tau \in \{0.1, 0.5, 0.9\}$ that *does* ensure quantile estimates never (or at least rarely) cross, we need a risk function that accounts for the possibility of crossing and penalises it. Assume we have multi-output model $f= (f_{\tau_1}, f_{\tau_2}, \dots, f_{\tau_N})$ that we would like to fit. Then, as a risk function, I propose the empirical mean loss summed with a hinge penalisation (see @loss_func p. 1067) term on crossings:
+$$
+\widehat R_{\tau, \lambda}^\mathrm{cross}(\beta) = \frac{1}{n_\mathrm{train}}\sum_{i\in\mathrm{train}}\left(\ell(Y_i, f (X_i;\beta)) + \lambda\sum_{j = 1}^N\max\{(f_{\tau_{j}}(X_i;\beta)-f_{\tau_{j+1}}(X_i;\beta)), 0\}\right)
+$$
+where $\lambda >0$ is a regularisation constant and the $\ell(y,q)=(\ell_{\tau_1}(y, q),\ell_{\tau_2}(y, q),\dots,\ell_{\tau_N}(y, q))$ is a multi-output loss function composed of each individual asymmetric loss (following the definition presented at the beginning of Question 2). Essentially, this risk function would at once fit the asymmetric quantile loss function while penalising any fits that allow crossing. The $\max\{f_{\tau_j}-f_{\tau_{j+1}}, 0\}$ term will evaluate to 0 when crossing does not occur, giving no penalty, but evaluates to a positive number when crossing does occur. Thus, we can penalise crossing while using the same loss function. This is a version of a hinge loss function, used in classification models, but here incorporated as a penalising term [@loss_func].
+
+To implement this for $\tau\in \{0.1,0.5,0.9\}$, I would run a similar $k$-fold cross-validation to the one constructed in @sec-ridge to find the optimal value of $\lambda$ across the set of $\tau$ values. I would then fit the model for the given $\lambda$, minimising the risk $\widehat R_{\tau, \lambda}^\mathrm{cross}(\beta)$. This should result in a model that minimises crossing as much as possible.
+
+## References
+
+::: {#refs}
+:::
+
+## Code Appendix {#sec-code}
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
