@@ -17,6 +17,14 @@ website:
   search:
     location: navbar
     type: textbox
+  page-footer:
+    left:
+      - text: "&copy; Copyright 2026, Emrys King. All rights reserved."
+    right:
+      - icon: github
+        href: https://github.com/egkegk/egkegk.github.io
+        aria-label: "Quarto GitHub"
+    background: "#f7f4ea"
 
 format:
   html:
